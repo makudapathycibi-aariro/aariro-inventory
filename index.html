@@ -65,7 +65,7 @@
     margin: 0; padding: 0;
     background: var(--bg);
     color: var(--ink);
-    font-family: 'RupeeSans', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
   body { min-height: 100vh; padding: 28px 20px 60px; }
   .wrap { max-width: 1200px; margin: 0 auto; }
@@ -100,13 +100,7 @@
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
   @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
   .stat { background: var(--surface-alt); border: 1px solid var(--border-soft); border-radius: 14px; padding: 16px 18px; }
-  .stat .num { font-family: 'RupeeSans', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 25px; font-weight: 600; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
-  /* The rupee sign comes from a standard system font everywhere (DM Sans has no proper ₹), at the right weight. */
-  @font-face { font-family: 'RupeeSans'; font-weight: 400 500; unicode-range: U+20B9;
-    src: local('Arial'), local('ArialMT'), local('Helvetica Neue'), local('Helvetica'), local('Segoe UI'), local('Roboto'), local('Noto Sans'); }
-  @font-face { font-family: 'RupeeSans'; font-weight: 600 700; unicode-range: U+20B9;
-    src: local('Arial Bold'), local('Arial-BoldMT'), local('Helvetica Neue Bold'), local('Helvetica-Bold'), local('Segoe UI Bold'), local('Roboto Bold'), local('Noto Sans Bold'); }
-  .rupee { font-family: inherit; }
+  .stat .num { font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 25px; font-weight: 600; line-height: 1.1; color: var(--ink); font-variant-numeric: tabular-nums; }
   .stat .label { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
   .stat.warn .num { color: var(--ink-strong); }
   .stat.bad .num { color: var(--ink-strong); font-weight: 700; }
@@ -150,7 +144,7 @@
   .icon-btn.danger:hover { color: var(--ink-strong); background: var(--blush); }
 
   .empty { padding: 60px 20px; text-align: center; color: var(--ink-soft); }
-  .empty h3 { font-family: 'RupeeSans', 'Fraunces', Georgia, serif; font-size: 19px; margin-bottom: 8px; color: var(--ink); font-weight: 500; }
+  .empty h3 { font-family: 'Fraunces', Georgia, serif; font-size: 19px; margin-bottom: 8px; color: var(--ink); font-weight: 500; }
   .empty p { font-size: 14px; margin: 0 0 18px; }
   .empty .btn { margin: 0 6px; }
 
@@ -162,7 +156,7 @@
   .modal { background: var(--surface); border-radius: 18px; width: 100%; max-width: 460px; max-height: 88vh; overflow-y: auto; border: 1px solid var(--border-soft); }
   .modal.wide { max-width: 560px; }
   .modal-head { display: flex; justify-content: space-between; align-items: center; padding: 20px 22px 6px; }
-  .modal-head h2 { font-family: 'RupeeSans', 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 500; margin: 0; }
+  .modal-head h2 { font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 500; margin: 0; }
   .modal-body { padding: 14px 22px 22px; }
   .field { margin-bottom: 13px; }
   .field label { display: block; font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; }
@@ -181,7 +175,7 @@
   .csv-preview { margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
   .csv-preview b { color: var(--ink); }
 
-  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 999px; font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity 160ms ease, transform 160ms ease; z-index: 60; }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(10px); background: var(--ink); color: var(--bg); padding: 10px 20px; border-radius: 999px; font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity 160ms ease, transform 160ms ease; z-index: 60; max-width: min(92vw, 720px); text-align: center; line-height: 1.4; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   @media (prefers-reduced-motion: reduce) {
@@ -208,7 +202,8 @@
   .or-err { display: none; color: var(--ink-strong); font-size: 12.5px; font-weight: 600; margin-top: 6px; }
   .order-row.has-error .or-err { display: block; }
   .or-note { margin-top: 6px; }
-  .or-return { margin-top: 8px; border: 1px solid var(--border); border-radius: 9px; padding: 8px; display: none; flex-direction: column; gap: 6px; }
+  .or-return { margin-top: 10px; border: 1px solid var(--border); border-radius: 12px; padding: 12px 16px; display: none; flex-direction: column; gap: 2px; }
+  .field input[type="checkbox"], .field input[type="radio"] { width: auto; padding: 0; }
   .menu-wrap { position: relative; display: inline-block; }
   .menu-wrap .btn svg { margin-left: 2px; }
   .menu { display: none; position: absolute; top: calc(100% + 6px); left: 0; min-width: 210px; background: var(--surface); border: 1px solid var(--border-soft); border-radius: 12px; padding: 6px; z-index: 40; }
@@ -227,7 +222,7 @@
 
   .log-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 16px; margin-top: 18px; overflow: hidden; }
   .log-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; padding: 16px 18px 4px; }
-  .log-head h2 { font-family: 'RupeeSans', 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 500; margin: 0; }
+  .log-head h2 { font-family: 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 500; margin: 0; }
   .chip-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 18px 4px; }
   .chip { background: var(--surface-alt); border: 1px solid var(--border-soft); border-radius: 999px; padding: 5px 12px; font-size: 12px; color: var(--ink-soft); }
   .chip b { color: var(--ink); font-weight: 700; }
@@ -243,10 +238,10 @@
   .subtabs { display: flex; gap: 18px; border-bottom: 1px solid var(--border-soft); margin-bottom: 22px; }
   .subtab { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--ink); padding: 8px 2px 10px; font-family: inherit; font-weight: 600; font-size: 14px; cursor: pointer; margin-bottom: -1px; }
   .subtab.active { color: var(--ink-strong); border-bottom-color: var(--ink-strong); }
-  .page-title { font-family: 'RupeeSans', 'Fraunces', Georgia, serif; font-weight: 500; font-size: 26px; color: var(--ink-strong); margin: 0 0 14px; }
+  .page-title { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 26px; color: var(--ink-strong); margin: 0 0 14px; }
   .page-lead { margin: -8px 0 18px; color: var(--ink); font-size: 14px; }
   .card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 16px; padding: 22px; }
-  .card-title { font-family: 'RupeeSans', 'Fraunces', Georgia, serif; font-weight: 500; font-size: 18px; color: var(--ink-strong); margin: 0 0 14px; }
+  .card-title { font-family: 'Fraunces', Georgia, serif; font-weight: 500; font-size: 18px; color: var(--ink-strong); margin: 0 0 14px; }
   .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start; }
   .stack { display: flex; flex-direction: column; gap: 24px; }
   .orders-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 24px; align-items: start; }
@@ -288,12 +283,29 @@
   .radio-card .sub { display: block; font-size: 12.5px; color: var(--ink); margin: 2px 0 8px; }
   .radio-card select { width: 100%; }
   .radio-card > span { flex: 1; min-width: 0; }
+  #detailsOverlay .modal { padding-bottom: 20px; }
+  #detailsBody { padding-bottom: 6px; }
+  .details-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .details-table th, .details-table td { padding: 9px 10px; border-bottom: 1px solid var(--border-soft); text-align: left; }
+  .details-table thead th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink); font-weight: 600; }
+  .details-table .num { text-align: right; white-space: nowrap; }
+  .details-table tfoot th { border-bottom: 0; color: var(--ink-strong); }
+  .row-actions { display: flex; align-items: center; gap: 4px; justify-content: flex-end; }
+  #ssPop { position: fixed; z-index: 300; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.14); padding: 8px; box-sizing: border-box; }
+  #ssPop[hidden] { display: none; }
+  #ssPop input { width: 100%; box-sizing: border-box; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--border); font-family: inherit; font-size: 14px; color: var(--ink-strong); background: var(--bg); margin-bottom: 6px; }
+  #ssList { max-height: 250px; overflow-y: auto; }
+  .ss-item { padding: 9px 12px; border-radius: 8px; font-size: 14px; color: var(--ink-strong); cursor: pointer; line-height: 1.35; }
+  .ss-item.active { background: var(--surface-alt); }
+  .ss-item[aria-selected="true"] { font-weight: 600; }
+  .ss-item[aria-disabled="true"] { color: var(--ink-faint); cursor: not-allowed; }
+  .ss-empty { padding: 10px 12px; color: var(--ink); font-size: 13px; }
   #authGate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
   #authGate.hidden { display: none; }
   body:not(.authed) .wrap { display: none; }
   .auth-card { text-align: center; max-width: 360px; }
   .auth-card img.brand-logo { height: 48px; display: block; margin: 0 auto 18px; }
-  .auth-card h1 { font-family: 'RupeeSans', 'Fraunces', Georgia, serif; font-size: 20px; font-weight: 500; margin: 0 0 8px; color: var(--ink-strong); }
+  .auth-card h1 { font-family: 'Fraunces', Georgia, serif; font-size: 20px; font-weight: 500; margin: 0 0 8px; color: var(--ink-strong); }
   .auth-card p { color: var(--ink); font-size: 14px; margin: 0 0 22px; line-height: 1.55; }
   .btn-google { display: inline-flex; align-items: center; gap: 10px; padding: 11px 22px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--ink-strong); font-size: 14px; font-weight: 600; cursor: pointer; font-family: inherit; }
   .btn-google:hover { background: var(--surface-alt); }
@@ -373,7 +385,7 @@
     <div class="toolbar">
       <div class="search-box">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="searchInput" placeholder="Search by name or SKU" aria-label="Search by name or SKU">
+        <input type="text" id="searchInput" placeholder="Search by name, SKU, design, size or kit" aria-label="Search by name or SKU">
       </div>
       <select id="categoryFilter" aria-label="Category"><option value="">All categories</option></select>
       <select id="statusFilter" aria-label="Stock level">
@@ -396,6 +408,7 @@
             <button class="menu-item need-edit" id="menuDownloadSheet" type="button">Download SKU sheet<span class="menu-sub">Every active SKU, quantity blank</span></button>
             <button class="menu-item need-edit" id="menuUploadSheet" type="button">Upload a filled sheet<span class="menu-sub">Adds the quantities to stock</span></button>
             <button class="menu-item" id="menuExportInventory" type="button">Export current stock<span class="menu-sub">Download the stock list as CSV</span></button>
+            <button class="menu-item" id="menuExportLots" type="button">Export stock by lot (Excel)<span class="menu-sub">Every lot with its cost price</span></button>
           </div>
         </div>
         <button class="btn need-edit" id="btnPrintTicked" type="button">Print labels (0)</button>
@@ -648,6 +661,15 @@
   </div>
 </div>
 
+<!-- Stock details -->
+<div class="overlay" id="detailsOverlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="detailsTitle">Details</h2><button class="close-x" id="detailsClose" aria-label="Close">&times;</button></div>
+    <div class="modal-body" id="detailsBody"></div>
+    <div class="modal-foot"><button class="btn" id="detailsDone" type="button">Close</button></div>
+  </div>
+</div>
+
 <!-- Manage access (owner only) -->
 <div class="overlay" id="accessOverlay">
   <div class="modal wide">
@@ -762,6 +784,7 @@ window.claude = { use: function (name) { return authReady.then(function () { ret
 
 // ---- sign-in ----
 (function authGate() {
+  let roleUnsub = null;
   const gate = document.getElementById('authGate');
   const logoSrc = document.querySelector('.brandmark .brand-logo');
   if (logoSrc) document.getElementById('authLogo').src = logoSrc.src;
@@ -785,6 +808,14 @@ window.claude = { use: function (name) { return authReady.then(function () { ret
       document.body.classList.add('authed');
       gate.classList.add('hidden');
       authReadyResolve(true);
+      // keep watching this person's own row: if the owner changes the role, the open page follows at once;
+      // if the row is removed, the app closes and the "no access" screen appears
+      if (roleUnsub) roleUnsub();
+      roleUnsub = onSnapshot(doc(firestoreDb, 'allowlist', email), function (s) {
+        if (!s.exists()) { document.body.classList.remove('authed'); noAccess(u.email); return; }
+        const nr = (s.data() || {}).role, next = ROLES.indexOf(nr) !== -1 ? nr : 'viewer';
+        if (next !== fbRole) { fbRole = next; window.dispatchEvent(new CustomEvent('aariro-role', { detail: { role: next } })); }
+      }, function () {});
     }).catch(function () { noAccess(u.email); });
   });
   function noAccess(email) {
@@ -1012,10 +1043,12 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     return 'ok';
   }
 
+  var toastTimer = null;
   function showToast(msg) {
     els.toast.textContent = msg;
     els.toast.classList.add('show');
-    setTimeout(function () { els.toast.classList.remove('show'); }, 2400);
+    clearTimeout(toastTimer);   // a new message replaces the old one and restarts the 10 seconds
+    toastTimer = setTimeout(function () { els.toast.classList.remove('show'); }, 10000);
   }
 
   function showPermBanner(msg) {
@@ -1029,6 +1062,23 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
   function isWritePermissionError(err) {
     return err && (err.code === 'permission-denied' || err.code === 'PERMISSION_DENIED' || err.code === 'invalid_argument' || err.code === 'revoked');
+  }
+
+  // ---------- search: any words, in any order, across everything that describes an item ----------
+  function qNorm(s) { return String(s == null ? '' : s).toLowerCase(); }
+  function productHay(p) {
+    var parts = [p.name, p.sku, p.category, libName('designs', p.desCode), libName('sizes', p.sizeCode), p.catCode, p.desCode, p.sizeCode];
+    if (p.pack) parts.push('pack of ' + parseInt(p.pack, 10), 'pack ' + parseInt(p.pack, 10));
+    if (p.source === 'H') parts.push('in-house in house made'); else if (p.source === 'T') parts.push('traded bought-in bought in');
+    var kit = isKitProduct(p);
+    parts.push(kit ? 'kit gift box set' : 'item single individual');
+    if (kit) p.kitComponents.forEach(function (s) { var c = findBySku(s); parts.push(s, c ? c.name : ''); });
+    if (retiredMap[p.id]) parts.push('retired');
+    return qNorm(parts.join(' '));
+  }
+  function matchesQuery(hay, q) {
+    var toks = qNorm(q).trim().split(/\s+/).filter(Boolean);
+    return toks.every(function (t) { return hay.indexOf(t) !== -1; });
   }
 
   // ---------- retired SKUs ----------
@@ -1055,10 +1105,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
     var filtered = products.filter(function (p) {
       if (isRetired(p) && !showRet) return false;
-      if (q) {
-        var hay = ((p.name || '') + ' ' + (p.sku || '')).toLowerCase();
-        if (hay.indexOf(q) === -1) return false;
-      }
+      if (q && !matchesQuery(productHay(p), q)) return false;
       if (catF && (p.category || '') !== catF) return false;
       if (statusF && statusOf(p) !== statusF) return false;
       return true;
@@ -1084,6 +1131,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     });
     Array.prototype.forEach.call(els.body.querySelectorAll('[data-print]'), function (btn) {
       btn.addEventListener('click', function () { openLabelsFor([btn.getAttribute('data-print')]); });
+    });
+    Array.prototype.forEach.call(els.body.querySelectorAll('[data-details]'), function (btn) {
+      btn.addEventListener('click', function () { openDetails(btn.getAttribute('data-details')); });
     });
     Array.prototype.forEach.call(els.body.querySelectorAll('.row-tick'), function (cb) {
       cb.addEventListener('change', function () {
@@ -1124,10 +1174,6 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         '</div>'
       : (Number(p.quantity) || 0) + (p.unit ? ' <span style="color:var(--ink-faint);font-size:12px;">' + escapeHtml(p.unit) + '</span>' : '');
     var value = stockValue(p);
-    var openLots = kitRow ? [] : lotsOf(p).filter(function (l) { return l.qty > 0; });
-    var lotLine = openLots.length > 1
-      ? '<div style="color:var(--ink-faint);font-size:11.5px;">' + openLots.slice(0, 3).map(function (l) { return l.qty + ' @ ' + fmtCost(l.cost); }).join(' · ') + (openLots.length > 3 ? ' · +' + (openLots.length - 3) + ' more' : '') + '</div>'
-      : '';
     var rt = retired ? retiredMap[p.id] : null;
     var retNote = rt ? '<div class="prod-sku">Retired' + (rt.supersededBySku ? ' · replaced by ' + escapeHtml(rt.supersededBySku) : '') + '</div>' : '';
     var svg = function (d) { return '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; };
@@ -1137,13 +1183,14 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       acts += '<button class="icon-btn need-edit" data-print="' + escapeHtml(p.id) + '" aria-label="Print label" title="Print label">' + svg('<path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7" rx="1"/><path d="M6 17H4a1 1 0 0 1-1-1v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5a1 1 0 0 1-1 1h-2"/>') + '</button>';
       acts += '<button class="icon-btn need-edit" data-edit="' + escapeHtml(p.id) + '" aria-label="Edit stock details" title="Edit stock details">' + svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>') + '</button>';
     }
+    acts += '<button class="btn btn-sm" data-details="' + escapeHtml(p.id) + '" type="button">Details</button>';
     return '<tr' + (retired ? ' class="retired-row"' : '') + '>' +
         '<td>' + (retired ? '' : '<input type="checkbox" class="row-tick" data-id="' + escapeHtml(p.id) + '" aria-label="Select ' + escapeHtml(p.name) + '"' + (ticked[p.id] ? ' checked' : '') + '>') + '</td>' +
         '<td><div class="prod-name">' + escapeHtml(p.name) + (kitRow ? '<span class="kit-tag">Kit</span>' : '') + '</div>' + (p.sku ? '<div class="prod-sku">' + escapeHtml(p.sku) + '</div>' : '') + retNote + '</td>' +
         '<td>' + escapeHtml(p.category || '\u2014') + '</td>' +
         '<td class="num">' + qtyCell + '</td>' +
         '<td class="num">' + (p.reorderLevel != null && p.reorderLevel !== '' ? Number(p.reorderLevel) : '\u2014') + '</td>' +
-        '<td class="num">' + (p.price ? fmtCurrency2(p.price) : '\u2014') + lotLine + '</td>' +
+        '<td class="num">' + (p.price ? fmtCurrency2(p.price) : '\u2014') + '</td>' +
         '<td class="num">' + (kitRow ? '\u2014' : fmtCurrency(value)) + '</td>' +
         '<td>' + badge + '</td>' +
         '<td><div class="row-actions">' + acts + '</div></td>' +
@@ -1296,8 +1343,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var reorderRaw = document.getElementById('fReorder').value;
     var priceRaw = document.getElementById('fPrice').value;
     function fail(m) { errBox.textContent = m; errBox.classList.add('show'); }
-    if (!kit && (qtyRaw === '' || isNaN(Number(qtyRaw)) || Number(qtyRaw) < 0)) { fail('Enter a valid quantity (0 or more).'); return; }
-    if (reorderRaw !== '' && (isNaN(Number(reorderRaw)) || Number(reorderRaw) < 0)) { fail('Reorder level can\'t be negative.'); return; }
+    if (!kit && (qtyRaw === '' || isNaN(Number(qtyRaw)) || Number(qtyRaw) < 0 || Number(qtyRaw) !== Math.floor(Number(qtyRaw)))) { fail('Enter a whole number for the quantity (0 or more).'); return; }
+    if (reorderRaw !== '' && (isNaN(Number(reorderRaw)) || Number(reorderRaw) < 0 || Number(reorderRaw) !== Math.floor(Number(reorderRaw)))) { fail('Reorder level must be a whole number, 0 or more.'); return; }
     if (priceRaw !== '' && (isNaN(Number(priceRaw)) || Number(priceRaw) < 0)) { fail('Price can\'t be negative.'); return; }
     if (!dbNS) { fail('Not connected to shared storage.'); return; }
     errBox.classList.remove('show');
@@ -1382,7 +1429,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         ? '<div class="row-actions" style="color:var(--ink); font-size:11.5px;">SKU retirement</div>'
         : d.kitParentId
         ? '<div class="row-actions" style="color:var(--ink-soft); font-size:11.5px;" title="Undo this from the gift box entry above">Part of kit</div>'
-        : '<div class="row-actions"><button class="icon-btn" data-undo="' + escapeHtml(d.id) + '" aria-label="Undo" title="' + (d.orderRef ? 'Undo this whole order' : 'Undo this entry') + '"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button></div>';
+        : '<div class="row-actions"><button class="icon-btn need-edit" data-undo="' + escapeHtml(d.id) + '" aria-label="Undo" title="' + (d.orderRef ? 'Undo this whole order' : 'Undo this entry') + '"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button></div>';
       return '<tr>' +
         '<td><input type="checkbox" class="log-row-cb" data-id="' + escapeHtml(d.id) + '"' + (logSelectedIds[d.id] ? ' checked' : '') + '></td>' +
         '<td>' + escapeHtml(d.date || '') + '</td>' +
@@ -1486,7 +1533,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     updateSaveLabel();
   }
   Array.prototype.forEach.call(document.querySelectorAll('#dispatchTypeToggle .type-btn'), function (btn) {
-    btn.addEventListener('click', function () { setDispatchType(btn.getAttribute('data-type')); });
+    btn.addEventListener('click', function () { setDispatchType(btn.getAttribute('data-type')); focusScan(); });
   });
 
   function openDispatch(productId, type) {
@@ -1512,7 +1559,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var sf = document.getElementById('scanFeedback'); if (sf) sf.style.display = 'none';
     focusScan();
   }
-  function focusScan() { var s = document.getElementById('scanInput'); if (s && activeView === 'orders') s.focus(); }
+  function focusScan() { setTimeout(function () { var s = document.getElementById('scanInput'); if (s && activeView === 'orders') s.focus(); }, 0); }
 
   // Works out how one product's lots change for a movement, and what to record in the activity log.
   //  dispatch -> oldest lots used first; restock -> a new lot at `cost`; return -> back into the most recently used lots.
@@ -1622,9 +1669,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     rows.forEach(function (row) {
       var p = products.filter(function (x) { return x.id === row.productId; })[0];
       var qty = Number(row.qty);
-      var per = res.per[row.rid] = { p: p, qty: (row.qty !== '' && !isNaN(qty)) ? qty : 0 };
+      var per = res.per[row.rid] = { p: p, qty: (row.qty !== '' && !isNaN(qty) && qty === Math.floor(qty)) ? qty : 0 };
       if (!p) { if (strict) res.errors[row.rid] = 'Choose a product.'; return; }
-      if (row.qty === '' || isNaN(qty) || qty <= 0) { if (strict) res.errors[row.rid] = 'Enter a quantity greater than 0.'; return; }
+      if (row.qty === '' || isNaN(qty) || qty <= 0 || qty !== Math.floor(qty)) { if (strict) res.errors[row.rid] = (row.qty !== '' && !isNaN(qty) && qty > 0) ? 'Enter a whole number — a part of a unit can\'t be moved.' : 'Enter a quantity greater than 0.'; return; }
       var item = { row: row, p: p, qty: qty, kitMoves: [], extra: '' };
 
       if (type === 'return') {
@@ -1672,7 +1719,13 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         }
       });
       per.kit = { info: info, moves: item.kitMoves, blocked: blocked, short: short, missing: info.missing };
-      if (blocked.length) { res.errors[row.rid] = 'Can\'t dispatch — out of stock: ' + blocked.map(function (c) { return c.name; }).join(', ') + '. Restock ' + (blocked.length === 1 ? 'it' : 'them') + ' first.'; return; }
+      if (blocked.length) {
+        var retiredIn = blocked.filter(function (c) { return !!retiredMap[c.id]; });
+        res.errors[row.rid] = retiredIn.length
+          ? 'Can\'t dispatch — ' + retiredIn.map(function (c) { return c.name; }).join(', ') + ' ' + (retiredIn.length === 1 ? 'is' : 'are') + ' retired. This kit needs a replacement SKU.'
+          : 'Can\'t dispatch — out of stock: ' + blocked.map(function (c) { return c.name; }).join(', ') + '. Restock ' + (blocked.length === 1 ? 'it' : 'them') + ' first.';
+        return;
+      }
       if (!item.kitMoves.length) { res.errors[row.rid] = 'None of this kit\'s components are in the inventory — add them (or fix the kit) first.'; return; }
       Object.keys(tmp).forEach(function (k) { virt[k] = tmp[k]; });
       if (info.missing.length) notes.push('not in inventory, skipped: ' + info.missing.join(', '));
@@ -1688,7 +1741,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var sorted = activeProducts().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
     return '<option value="">Choose a product…</option>' + sorted.map(function (p) {
       var disabled = takenIds.indexOf(p.id) !== -1 && p.id !== selectedId;
-      return '<option value="' + escapeHtml(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + (disabled ? ' disabled' : '') + '>' + escapeHtml(p.name) + ' (' + (isKitProduct(p) ? kitInfo(p).count + ' kits can be made' : (Number(p.quantity) || 0) + ' in stock') + ')</option>';
+      return '<option value="' + escapeHtml(p.id) + '"' + (p.id === selectedId ? ' selected' : '') + (disabled ? ' disabled' : '') + ' data-search="' + escapeHtml(productHay(p)) + '">' + escapeHtml(p.name) + ' (' + (isKitProduct(p) ? kitInfo(p).count + ' kits can be made' : (Number(p.quantity) || 0) + ' in stock') + ')</option>';
     }).join('');
   }
 
@@ -1710,10 +1763,12 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     }).join('');
     Array.prototype.forEach.call(host.querySelectorAll('.order-row'), function (el) {
       var row = orderRows.filter(function (x) { return x.rid === el.getAttribute('data-rid'); })[0];
-      el.querySelector('.or-product').addEventListener('change', function () { row.productId = this.value; row.checks = {}; itemsChanged(true); });
+      // choosing a product moves the cursor to that row's Quantity; Enter there sends it back to the scan box
+      el.querySelector('.or-product').addEventListener('change', function () { row.productId = this.value; row.checks = {}; itemsChanged(true); if (row.productId) focusRowQty(row.rid); });
       el.querySelector('.or-qty').addEventListener('input', function () { row.qty = this.value; itemsChanged(false); });
+      el.querySelector('.or-qty').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); focusScan(); } });
       var rm = el.querySelector('.or-remove');
-      if (rm) rm.addEventListener('click', function () { orderRows = orderRows.filter(function (x) { return x !== row; }); itemsChanged(true); });
+      if (rm) rm.addEventListener('click', function () { orderRows = orderRows.filter(function (x) { return x !== row; }); itemsChanged(true); focusScan(); });
     });
     refreshRowNotes();
   }
@@ -1810,10 +1865,10 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var box = el.querySelector('.or-return');
     if (dispatchType !== 'return' || !per || !per.p || !isKitProduct(per.p)) { box.style.display = 'none'; box._html = ''; box.innerHTML = ''; return; }
     var kit = resolveKitComponents(per.p);
-    var inner = '<div style="font-size:12.5px; color:var(--ink-soft);">Confirm which items were actually received back</div>' + kit.resolved.map(function (c) {
+    var inner = '<div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:4px;">Confirm which items were actually received back</div>' + kit.resolved.map(function (c) {
       if (!(c.sku in row.checks)) row.checks[c.sku] = true;
-      return '<label style="display:flex; align-items:center; gap:8px; font-size:13.5px; cursor:pointer;">' +
-        '<input type="checkbox" class="kit-return-cb" data-sku="' + escapeHtml(c.sku) + '"' + (row.checks[c.sku] ? ' checked' : '') + '> ' + escapeHtml(c.name) + '</label>';
+      return '<label style="display:flex; align-items:center; justify-content:flex-start; gap:12px; padding:8px 4px; font-size:13.5px; line-height:1.4; text-align:left; cursor:pointer;">' +
+        '<input type="checkbox" class="kit-return-cb" style="width:18px; height:18px; flex:none; margin:0; padding:0;" data-sku="' + escapeHtml(c.sku) + '"' + (row.checks[c.sku] ? ' checked' : '') + '><span style="font-weight:500; color:var(--ink-strong);">' + escapeHtml(c.name) + '</span></label>';
     }).join('') + kit.missing.map(function (sku) {
       return '<div style="font-size:12.5px; color:var(--ink-soft);">⚠ Component SKU "' + escapeHtml(sku) + '" not found — can\'t confirm receipt.</div>';
     }).join('');
@@ -1822,7 +1877,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     box._html = inner;
     box.innerHTML = inner;
     Array.prototype.forEach.call(box.querySelectorAll('.kit-return-cb'), function (cb) {
-      cb.addEventListener('change', function () { row.checks[cb.getAttribute('data-sku')] = cb.checked; kitConfirmed = false; });
+      cb.addEventListener('change', function () { row.checks[cb.getAttribute('data-sku')] = cb.checked; kitConfirmed = false; focusScan(); });
     });
   }
 
@@ -1867,13 +1922,13 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     orderRows.push(newOrderRow(''));
     itemsChanged(true);
     var sels = document.querySelectorAll('#orderItems .or-product');
-    if (sels.length) sels[sels.length - 1].focus();
+    if (sels.length) { var lastSel = sels[sels.length - 1]; lastSel.focus(); if (ssRealCount(lastSel) >= SS_MIN) ssOpen(lastSel, ''); }
   });
   document.getElementById('fLotPrice').addEventListener('input', refreshRowNotes);
   document.getElementById('fDispatchOther').addEventListener('input', refreshRowNotes);
 
-  document.getElementById('dispatchCancel').addEventListener('click', function () { closeDispatch(); showView('stock'); });
-  document.getElementById('kitWarnCancel').addEventListener('click', function () { kitConfirmed = false; hideKitWarn(); });
+  document.getElementById('dispatchCancel').addEventListener('click', function () { closeDispatch(); focusScan(); });
+  document.getElementById('kitWarnCancel').addEventListener('click', function () { kitConfirmed = false; hideKitWarn(); focusScan(); });
   document.getElementById('kitWarnContinue').addEventListener('click', function () {
     kitConfirmed = true;
     hideKitWarn();
@@ -1972,11 +2027,36 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     return { parents: parents, records: records };
   }
 
+  // Undoing dispatches is refused while returns recorded for the same item and channel would then exceed what was sent.
+  // It looks at every item the undo touches (the items of a kit included) and counts exactly as the Return form does.
+  function returnsBlockForRecords(records) {
+    var drop = {}, names = {};
+    records.forEach(function (r) {
+      if (r.type !== 'dispatch') return;
+      var k = r.productId + '\u0001' + r.channel;
+      drop[k] = (drop[k] || 0) + (Number(r.quantity) || 0); names[k] = r.productName || 'this item';
+    });
+    var keys = Object.keys(drop);
+    for (var i = 0; i < keys.length; i++) {
+      var parts = keys[i].split('\u0001'), sent = 0, back = 0;
+      dispatches.forEach(function (x) {
+        if (x.productId !== parts[0] || x.channel !== parts[1]) return;
+        if (x.type === 'dispatch') sent += Number(x.quantity) || 0; else if (x.type === 'return') back += Number(x.quantity) || 0;
+      });
+      if (back > sent - drop[keys[i]]) {
+        return 'Can\'t undo — ' + back + ' of "' + names[keys[i]] + '" ' + (back === 1 ? 'was' : 'were') + ' already returned from ' + parts[1] + '. Undo the return first.';
+      }
+    }
+    return null;
+  }
+
   function openUndo(id) {
     var d = dispatches.filter(function (x) { return x.id === id; })[0];
     if (!d) return;
-    undoingId = id;
     var g = undoGroupFor(d);
+    var blockMsg = returnsBlockForRecords(g.records);
+    if (blockMsg) { showToast(blockMsg); return; }
+    undoingId = id;
     var text;
     if (g.parents.length > 1) {
       text = 'Undo the whole order' + (d.orderId ? ' "' + d.orderId + '"' : '') + ' (' + g.parents.length + ' items: ' +
@@ -2035,7 +2115,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (!undoingId || !dbNS) return;
     var d = dispatches.filter(function (x) { return x.id === undoingId; })[0];
     if (!d) return;
-    var records = undoGroupFor(d).records;
+    var groupNow = undoGroupFor(d), records = groupNow.records;
+    var blockNow = returnsBlockForRecords(records);
+    if (blockNow) { closeUndo(); showToast(blockNow); return; }
     var anyProduct = records.some(function (r) { return !!(products.filter(function (x) { return x.id === r.productId; })[0]); });
 
     // check the whole order can be reversed before touching anything
@@ -2094,6 +2176,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   document.getElementById('menuReturn').addEventListener('click', function () { openDispatch(null, 'return'); });
   document.getElementById('menuRestock').addEventListener('click', function () { openDispatch(null, 'restock'); });
   document.getElementById('menuExportInventory').addEventListener('click', exportInventoryCsv);
+  document.getElementById('menuExportLots').addEventListener('click', exportStockByLot);
   document.getElementById('menuDownloadSheet').addEventListener('click', function () { downloadSkuSheet(); });
   document.getElementById('menuUploadSheet').addEventListener('click', openBulkRestock);
 
@@ -2180,10 +2263,15 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var unmatchedLabels = [];
     var kitWarnings = [];
     var kitRows = 0;
+    var invalidLabels = [];
     rows.forEach(function (row) {
       var product = findProductForRow(row);
-      var qty = Number(row.quantity || row.qty) || 0;
+      var rawQty = String(row.quantity || row.qty).trim(), qty = Number(rawQty);
+      var rawCost = String(row.price || row.cost || row['cost price'] || row['unit cost'] || '').trim();
       if (product && isRetired(product)) { unmatchedLabels.push((row.sku || product.sku) + ' (retired)'); return; }
+      if (product && qty === 0) return;   // a 0 means nothing came in
+      if (product && (isNaN(qty) || qty < 0 || qty !== Math.floor(qty))) { invalidLabels.push((row.sku || product.sku) + ' (quantity "' + rawQty + '" is not a whole number above 0)'); return; }
+      if (product && rawCost !== '' && (isNaN(Number(rawCost)) || Number(rawCost) < 0)) { invalidLabels.push((row.sku || product.sku) + ' (price "' + rawCost + '" is not a number, 0 or more)'); return; }
       if (product && qty > 0) {
         if (isKitProduct(product)) {
           var info = kitInfo(product);
@@ -2204,7 +2292,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         unmatchedLabels.push(row.sku || row.name || row['product name'] || row['product']);
       }
     });
-    return { matched: matched, unmatchedLabels: unmatchedLabels, kitWarnings: kitWarnings, kitRows: kitRows };
+    return { matched: matched, unmatchedLabels: unmatchedLabels, invalidLabels: invalidLabels, kitWarnings: kitWarnings, kitRows: kitRows };
   }
 
   function updateBulkRestockPreview() {
@@ -2215,7 +2303,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var unmatchedBox = document.getElementById('bulkRestockUnmatched');
     var confirmBtn = document.getElementById('bulkRestockConfirm');
 
-    if (!bulkRestockMatched.length && !bulkRestockUnmatchedCount && !result.kitWarnings.length) {
+    if (!bulkRestockMatched.length && !bulkRestockUnmatchedCount && !result.kitWarnings.length && !result.invalidLabels.length) {
       preview.textContent = '';
       unmatchedBox.style.display = 'none';
       confirmBtn.disabled = true;
@@ -2227,6 +2315,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       (bulkRestockUnmatchedCount ? ', <b>' + bulkRestockUnmatchedCount + '</b> row' + (bulkRestockUnmatchedCount === 1 ? '' : 's') + ' could not be matched.' : '.');
     var boxLines = [];
     if (bulkRestockUnmatchedCount) boxLines.push('Skipped — not an active SKU in the list: ' + result.unmatchedLabels.map(escapeHtml).join(', ') + '. Create a missing SKU under Products &amp; SKUs, then upload again.');
+    if (result.invalidLabels.length) boxLines.push('Skipped — invalid value: ' + result.invalidLabels.map(escapeHtml).join('; ') + '.');
     result.kitWarnings.forEach(function (w) { boxLines.push('⚠ ' + escapeHtml(w)); });
     if (boxLines.length) {
       unmatchedBox.style.display = 'block';
@@ -2399,7 +2488,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function pad2(v) { return String(v).padStart(2, '0'); }
   function nowIso() { return new Date().toISOString(); }
   function el(id) { return document.getElementById(id); }
-  function optHtml(value, text, sel) { return '<option value="' + escapeHtml(value) + '"' + (sel ? ' selected' : '') + '>' + escapeHtml(text) + '</option>'; }
+  function optHtml(value, text, sel, hay) { return '<option value="' + escapeHtml(value) + '"' + (sel ? ' selected' : '') + (hay ? ' data-search="' + escapeHtml(hay) + '"' : '') + '>' + escapeHtml(text) + '</option>'; }
 
   function showView(name) {
     if ((name === 'orders' || name === 'labels') && !canWriteStock()) name = 'stock';
@@ -2501,8 +2590,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   var gen = { mode: 'individual', cat: '', des: '', size: '', pack: '1', packTouched: false, source: 'H', kit: [], reorder: '50', photoId: null, kitQuery: '' };
   var createBuilt = false;
   function genSku() {
-    var n = parseInt(gen.pack, 10);
-    if (!gen.cat || !gen.des || !gen.size || !n || n < 1 || n > 99) return null;
+    var n = /^\d{1,2}$/.test(String(gen.pack).trim()) ? parseInt(gen.pack, 10) : 0;
+    if (!gen.cat || !gen.des || !gen.size || !n || n < 1) return null;
     return ['AA', gen.cat, gen.des, gen.size, pad2(n), gen.source + (gen.mode === 'kit' ? 'K' : 'I')].join('-');
   }
   function resetGen() {
@@ -2626,7 +2715,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var term = (gen.kitQuery || '').trim().toLowerCase();
     var cands = activeProducts().filter(function (p) {
       if (isKitProduct(p) || gen.kit.indexOf(p.sku) !== -1) return false;
-      return !term || ((p.name || '') + ' ' + (p.sku || '')).toLowerCase().indexOf(term) !== -1;
+      return !term || matchesQuery(productHay(p), term);
     }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
     el('crKitList').innerHTML = cands.length ? cands.map(function (p) {
       return '<button type="button" class="menu-item" style="border:1px solid var(--border-soft);" data-add="' + escapeHtml(p.sku) + '">' + escapeHtml(p.name) + '<span class="menu-sub">' + escapeHtml(p.sku) + ' · ' + (Number(p.quantity) || 0) + ' in stock</span></button>';
@@ -2646,7 +2735,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (kit && !gen.kit.length) { showToast('Add at least one item to this kit'); return; }
     if (products.some(function (p) { return (p.sku || '').toUpperCase() === sku; })) { showToast('This SKU already exists: ' + sku); return; }
     var reorder = gen.reorder === '' ? 0 : Number(gen.reorder);
-    if (isNaN(reorder) || reorder < 0) { showToast('Reorder level can\'t be negative'); return; }
+    if (isNaN(reorder) || reorder < 0 || reorder !== Math.floor(reorder)) { showToast('Reorder level must be a whole number, 0 or more'); return; }
     var now = nowIso();
     var rec = {
       name: skuDisplayName(gen.cat, gen.des, gen.size, gen.pack), sku: sku, category: libName('categories', gen.cat),
@@ -2676,7 +2765,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       '<h1 class="page-title">SKU list</h1><p class="page-lead">Every SKU, including retired ones. A SKU is never edited — if one is wrong, an owner retires it and a corrected one is created.</p>' +
       '<div class="two-col" style="grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);"><div class="card"><div class="search-box" style="margin-bottom:14px;">' +
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
-        '<input type="text" id="slSearch" placeholder="Search by name or SKU" aria-label="Search SKUs"></div>' +
+        '<input type="text" id="slSearch" placeholder="Search by name, SKU, design, size or kit" aria-label="Search SKUs"></div>' +
         '<div class="table-scroll" style="border:1px solid var(--border-soft); border-radius:12px;"><table><thead><tr><th>SKU</th><th class="num">In stock</th><th>Status</th><th></th></tr></thead><tbody id="slBody"></tbody></table></div>' +
         '<div class="log-empty" id="slEmpty" style="display:none;">No SKUs yet.</div></div>' +
       '<div id="slPanel"></div></div>';
@@ -2686,7 +2775,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function renderSkuList() {
     if (!listBuilt) buildSkuList();
     var q = el('slSearch').value.trim().toLowerCase();
-    var rows = products.filter(function (p) { return !q || ((p.name || '') + ' ' + (p.sku || '')).toLowerCase().indexOf(q) !== -1; })
+    var rows = products.filter(function (p) { return !q || matchesQuery(productHay(p), q); })
       .sort(function (a, b) { var ra = isRetired(a) ? 1 : 0, rb = isRetired(b) ? 1 : 0; return ra - rb || (a.sku || '').localeCompare(b.sku || ''); });
     el('slEmpty').style.display = rows.length ? 'none' : 'block';
     el('slBody').innerHTML = rows.map(function (p) {
@@ -2728,7 +2817,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var deps = dependentKits(p);
     var sig = 'ret|' + p.id + '|' + stock + '|' + cands.map(function (c) { return c.id; }).join(',') + '|' + deps.map(function (k) { return k.id; }).join(',');
     if (!changed('panel', sig)) return;
-    var opts = function (placeholder) { return optHtml('', placeholder, true) + cands.map(function (c) { return optHtml(c.id, c.name + ' · ' + c.sku, false); }).join(''); };
+    var opts = function (placeholder) { return optHtml('', placeholder, true) + cands.map(function (c) { return optHtml(c.id, c.name + ' · ' + c.sku, false, productHay(c)); }).join(''); };
     var lots = isKitProduct(p) ? [] : lotsOf(p).filter(function (l) { return l.qty > 0; });
     var html = '<div class="card"><h2 class="card-title" style="margin-bottom:4px;">Retire ' + escapeHtml(p.sku) + '</h2>' +
       '<div style="font-size:13.5px; margin-bottom:16px;">' + escapeHtml(p.name) + ' · <b style="color:var(--ink-strong);">' + (isKitProduct(p) ? 'kit — no stock of its own' : (stock ? stock + ' in stock' : 'no stock')) + '</b>' + (lots.length ? ' (' + escapeHtml(fmtLots(lots)) + ')' : '') + '</div>' +
@@ -2778,7 +2867,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       t.used.forEach(function (u) { destLots = addLotTo(destLots, u.qty, u.cost, day, 'Moved from ' + p.sku).lots; });
       var avg = roundMoney(avgCost(t.used));
       chain = chain
-        .then(function () { return dbNS.collection('products').doc(dest.id).update(stockFields(destLots, now, null)); })
+        .then(function () { return dbNS.collection('products').doc(dest.id).update(stockFields(destLots, now, t.used.length ? t.used[t.used.length - 1].cost : null)); })
         .then(function () { return dbNS.collection('products').doc(p.id).update({ quantity: 0, lots: [], updatedAt: now }); })
         .then(function () { return dbNS.collection('dispatches').add({ productId: p.id, productName: p.name, sku: p.sku, type: 'transfer', direction: 'out', channel: 'SKU retirement', quantity: stock, unitCost: avg, date: day, notes: 'Moved to ' + dest.sku, createdAt: now }); })
         .then(function () { return dbNS.collection('dispatches').add({ productId: dest.id, productName: dest.name, sku: dest.sku, type: 'transfer', direction: 'in', channel: 'SKU retirement', quantity: stock, unitCost: avg, date: day, notes: 'Moved from ' + p.sku, createdAt: now }); });
@@ -2921,7 +3010,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       '<h1 class="page-title">Print labels</h1><p class="page-lead">Barcodes are made from the SKU, so the label and the stock row always match.</p>' +
       '<div class="two-col"><div class="card"><h2 class="card-title">What to print</h2>' +
         '<div class="type-toggle" id="lbModes" style="margin-bottom:16px;"><button type="button" class="type-btn" data-mode="restock">From the last restock</button><button type="button" class="type-btn" data-mode="ticked">From ticked Stock rows</button><button type="button" class="type-btn" data-mode="pick">Pick SKUs</button></div>' +
-        '<div class="search-box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="lbSearch" placeholder="Search by name or SKU" aria-label="Search SKUs"></div>' +
+        '<div class="search-box"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="lbSearch" placeholder="Search by name, SKU, design, size or kit" aria-label="Search SKUs"></div>' +
         '<div class="table-scroll" style="margin-top:14px; border:1px solid var(--border-soft); border-radius:12px; max-height:420px; overflow-y:auto;"><table><tbody id="lbBody"></tbody></table></div>' +
         '<div id="lbCount" style="margin-top:14px; font-size:13.5px; color:var(--ink-strong);"></div></div>' +
       '<div class="card"><h2 class="card-title" id="lbPrevTitle">Preview</h2><div id="lbPreview" style="display:flex; flex-direction:column; gap:18px;"></div>' +
@@ -2943,7 +3032,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   function renderLabelList() {
     var q = el('lbSearch').value.trim().toLowerCase();
-    var rows = activeProducts().filter(function (p) { return !q || ((p.name || '') + ' ' + (p.sku || '')).toLowerCase().indexOf(q) !== -1; })
+    var rows = activeProducts().filter(function (p) { return !q || matchesQuery(productHay(p), q); })
       .sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
     el('lbBody').innerHTML = rows.map(function (p) {
       var on = labelSel[p.id] != null;
@@ -3040,6 +3129,194 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   el('scanInput').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); handleScan(this.value); this.value = ''; }
+  });
+
+  // =====================================================================================
+  //  Stock details and the Excel export by lot
+  // =====================================================================================
+  var detailsOverlay = el('detailsOverlay');
+  function openDetails(id) {
+    var p = products.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    var kit = isKitProduct(p), rt = retiredMap[p.id] || null;
+    el('detailsTitle').textContent = p.name;
+    var h = '<div class="helptext" style="margin:0 0 14px;">' + escapeHtml(p.sku || '') + (p.category ? ' · ' + escapeHtml(p.category) : '') +
+      (rt ? ' · Retired' + (rt.supersededBySku ? ' (replaced by ' + escapeHtml(rt.supersededBySku) + ')' : '') : '') + '</div>';
+    if (kit) {
+      var info = kitInfo(p);
+      h += '<div style="margin-bottom:12px; color:var(--ink-strong);"><b>' + info.count + ' kit' + (info.count === 1 ? '' : 's') + ' can be made</b>' + (info.limiting ? ' — limited by ' + escapeHtml(info.limiting.name) : '') + '</div>';
+      h += '<table class="details-table"><thead><tr><th>Item</th><th>SKU</th><th class="num">In stock</th></tr></thead><tbody>' +
+        info.components.map(function (c) { return '<tr><td>' + escapeHtml(c.name) + (retiredMap[c.id] ? ' <span class="badge retired">Retired</span>' : '') + '</td><td>' + escapeHtml(c.sku) + '</td><td class="num">' + (Number(c.quantity) || 0) + '</td></tr>'; }).join('') +
+        info.missing.map(function (s) { return '<tr><td colspan="2">⚠ ' + escapeHtml(s) + ' is not in the SKU list</td><td class="num">—</td></tr>'; }).join('') + '</tbody></table>';
+      h += '<p class="helptext" style="margin-top:12px;">A kit has no stock of its own, so it has no cost price or value. Its items are counted in the totals.</p>';
+    } else {
+      var lots = lotsOf(p).filter(function (l) { return l.qty > 0; }), qty = lotsQty(lots), val = lotsValue(lots);
+      if (!lots.length) h += '<p style="margin:0 0 8px;">No stock on hand.</p>';
+      else {
+        h += '<table class="details-table"><thead><tr><th>Received</th><th>Source</th><th class="num">Left</th><th class="num">Cost price</th><th class="num">Value</th></tr></thead><tbody>' +
+          lots.map(function (l) { return '<tr><td>' + (l.date ? escapeHtml(l.date) : '\u2014') + '</td><td>' + escapeHtml(l.source || '\u2014') + '</td><td class="num">' + l.qty + '</td><td class="num">' + fmtCost(l.cost) + '</td><td class="num">' + fmtCost(l.qty * l.cost) + '</td></tr>'; }).join('') +
+          '</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">' + qty + '</th><th class="num">' + (qty ? fmtCost(val / qty) + ' avg' : '') + '</th><th class="num">' + fmtCost(val) + '</th></tr></tfoot></table>';
+      }
+      h += '<p class="helptext" style="margin-top:12px;">Oldest stock is used first, so older lots keep their own cost price. The Cost price on the Stock row is the latest lot.</p>';
+    }
+    h += '<div class="helptext">Reorder at ' + (p.reorderLevel != null && p.reorderLevel !== '' ? Number(p.reorderLevel) : 0) + ' · Unit: ' + escapeHtml(p.unit || 'Nos') + '</div>';
+    el('detailsBody').innerHTML = h;
+    detailsOverlay.classList.add('show');
+  }
+  function closeDetails() { detailsOverlay.classList.remove('show'); }
+  el('detailsClose').addEventListener('click', closeDetails);
+  el('detailsDone').addEventListener('click', closeDetails);
+  detailsOverlay.addEventListener('click', function (e) { if (e.target === detailsOverlay) closeDetails(); });
+
+  function exportStockByLot() {
+    var list = activeProducts().filter(function (p) { return !isKitProduct(p); }).sort(function (a, b) { return (a.sku || '').localeCompare(b.sku || ''); });
+    var lotRows = [['SKU', 'Product', 'Category', 'Lot received', 'Source', 'Quantity left', 'Cost price (₹)', 'Value (₹)']];
+    var sumRows = [['SKU', 'Product', 'Category', 'Quantity', 'Latest cost price (₹)', 'Average cost (₹)', 'Stock value (₹)']];
+    var tq = 0, tv = 0;
+    list.forEach(function (p) {
+      var lots = lotsOf(p).filter(function (l) { return l.qty > 0; }), q = lotsQty(lots), v = lotsValue(lots);
+      lots.forEach(function (l) { lotRows.push([p.sku, p.name, p.category || '', l.date || '', l.source || '', l.qty, roundMoney(l.cost), roundMoney(l.qty * l.cost)]); });
+      sumRows.push([p.sku, p.name, p.category || '', q, roundMoney(p.price), q ? roundMoney(v / q) : 0, roundMoney(v)]);
+      tq += q; tv += v;
+    });
+    if (lotRows.length === 1) { showToast('There is no stock to export yet'); return; }
+    lotRows.push(['', 'Total', '', '', '', tq, '', roundMoney(tv)]);
+    sumRows.push(['', 'Total', '', tq, '', '', roundMoney(tv)]);
+    var day = todayStr();
+    if (typeof XLSX === 'undefined') {
+      saveFile('aariro-stock-by-lot-' + day + '.csv', '\ufeff' + lotRows.map(function (r) { return r.map(csvCell).join(','); }).join('\n'));
+      return;
+    }
+    var wb = XLSX.utils.book_new();
+    var ws1 = XLSX.utils.aoa_to_sheet(lotRows), ws2 = XLSX.utils.aoa_to_sheet(sumRows);
+    ws1['!cols'] = [{ wch: 22 }, { wch: 56 }, { wch: 24 }, { wch: 14 }, { wch: 22 }, { wch: 14 }, { wch: 16 }, { wch: 16 }];
+    ws2['!cols'] = [{ wch: 22 }, { wch: 56 }, { wch: 24 }, { wch: 10 }, { wch: 20 }, { wch: 18 }, { wch: 18 }];
+    function fmtCol(ws, cols, rows) { cols.forEach(function (c) { for (var r = 2; r <= rows; r++) { var cell = ws[XLSX.utils.encode_cell({ c: c, r: r - 1 })]; if (cell && typeof cell.v === 'number') cell.z = '#,##0.00'; } }); }
+    fmtCol(ws1, [6, 7], lotRows.length); fmtCol(ws2, [4, 5, 6], sumRows.length);
+    XLSX.utils.book_append_sheet(wb, ws1, 'Stock by lot'); XLSX.utils.book_append_sheet(wb, ws2, 'Summary by SKU');
+    var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveFile('aariro-stock-by-lot-' + day + '.xlsx', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  }
+
+  // =====================================================================================
+  //  Searchable dropdowns: any list with more than 7 choices gets a search box on top
+  // =====================================================================================
+  var SS_MIN = 8, ssPop = null, ssSel = null, ssItems = [], ssActive = -1;
+  function ssRealCount(sel) { var n = 0; for (var i = 0; i < sel.options.length; i++) if (sel.options[i].value !== '') n++; return n; }
+  function ssEnsure() {
+    if (ssPop) return;
+    ssPop = document.createElement('div'); ssPop.id = 'ssPop'; ssPop.hidden = true;
+    ssPop.innerHTML = '<input type="text" id="ssInput" autocomplete="off" aria-label="Search the list" placeholder="Type to search…"><div id="ssList" role="listbox"></div>';
+    document.body.appendChild(ssPop);
+    var inp = ssPop.querySelector('#ssInput'), list = ssPop.querySelector('#ssList');
+    inp.addEventListener('input', ssFilter);
+    inp.addEventListener('keydown', function (e) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); ssMove(1); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); ssMove(-1); }
+      else if (e.key === 'Enter') { e.preventDefault(); ssChoose(ssActive); }
+      else if (e.key === 'Escape') { e.preventDefault(); ssClose(true); }
+      else if (e.key === 'Tab') { ssClose(false); }
+    });
+    list.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    list.addEventListener('click', function (e) { var it = e.target.closest('.ss-item'); if (it) ssChoose(Number(it.getAttribute('data-i'))); });
+    document.addEventListener('mousedown', function (e) { if (!ssPop.hidden && !ssPop.contains(e.target) && e.target !== ssSel) ssClose(false); }, true);
+    window.addEventListener('resize', function () { ssClose(false); });
+    window.addEventListener('scroll', function (e) { if (!ssPop.hidden && !ssPop.contains(e.target)) ssClose(false); }, true);
+  }
+  function ssOpen(sel, prefill) {
+    ssEnsure(); ssSel = sel; ssItems = [];
+    for (var i = 0; i < sel.options.length; i++) {
+      var o = sel.options[i];
+      ssItems.push({ value: o.value, text: o.textContent, hay: qNorm(o.getAttribute('data-search') || o.textContent), disabled: o.disabled, selected: o.value === sel.value, blank: o.value === '' });
+    }
+    var r = sel.getBoundingClientRect(), w = Math.max(r.width, 320);
+    ssPop.style.width = w + 'px';
+    ssPop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8)) + 'px';
+    ssPop.hidden = false;
+    if (window.innerHeight - r.bottom < 330 && r.top > window.innerHeight - r.bottom) { ssPop.style.top = 'auto'; ssPop.style.bottom = (window.innerHeight - r.top + 4) + 'px'; }
+    else { ssPop.style.bottom = 'auto'; ssPop.style.top = (r.bottom + 4) + 'px'; }
+    var inp = ssPop.querySelector('#ssInput'); inp.value = prefill || '';
+    ssFilter(); inp.focus();
+  }
+  function ssFilter() {
+    var q = ssPop.querySelector('#ssInput').value, list = ssPop.querySelector('#ssList'), shown = [];
+    ssItems.forEach(function (it, i) { if (it.blank ? !q.trim() : matchesQuery(it.hay, q)) shown.push(i); });
+    list.innerHTML = shown.length ? shown.map(function (i) {
+      var it = ssItems[i];
+      return '<div class="ss-item" role="option" data-i="' + i + '"' + (it.selected ? ' aria-selected="true"' : '') + (it.disabled ? ' aria-disabled="true"' : '') + '>' + escapeHtml(it.text) + '</div>';
+    }).join('') : '<div class="ss-empty">No matches</div>';
+    var pick = -1;
+    if (q.trim()) { for (var k = 0; k < shown.length; k++) if (!ssItems[shown[k]].disabled && !ssItems[shown[k]].blank) { pick = shown[k]; break; } }
+    else { for (var k2 = 0; k2 < shown.length; k2++) if (ssItems[shown[k2]].selected && !ssItems[shown[k2]].blank) { pick = shown[k2]; break; } }
+    ssActive = pick; ssMark();
+  }
+  function ssMark() {
+    Array.prototype.forEach.call(ssPop.querySelectorAll('.ss-item'), function (n) {
+      var on = Number(n.getAttribute('data-i')) === ssActive;
+      n.classList.toggle('active', on);
+      if (on && n.scrollIntoView) n.scrollIntoView({ block: 'nearest' });
+    });
+  }
+  function ssMove(dir) {
+    var nodes = Array.prototype.filter.call(ssPop.querySelectorAll('.ss-item'), function (n) { return n.getAttribute('aria-disabled') !== 'true' && !ssItems[Number(n.getAttribute('data-i'))].blank; });
+    if (!nodes.length) return;
+    var idx = nodes.findIndex(function (n) { return Number(n.getAttribute('data-i')) === ssActive; });
+    idx = idx < 0 ? (dir > 0 ? 0 : nodes.length - 1) : (idx + dir + nodes.length) % nodes.length;
+    ssActive = Number(nodes[idx].getAttribute('data-i')); ssMark();
+  }
+  function ssClose(refocus) {
+    if (!ssPop || ssPop.hidden) return;
+    ssPop.hidden = true;
+    if (refocus && ssSel && document.body.contains(ssSel)) ssSel.focus();
+  }
+  function ssChoose(i) {
+    var it = ssItems[i]; if (!it || it.disabled) return;
+    var sel = ssSel; ssClose(false);
+    if (sel.value !== it.value) { sel.value = it.value; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    setTimeout(function () { var a = document.activeElement; if ((!a || a === document.body) && document.body.contains(sel)) sel.focus(); }, 0);
+  }
+  document.addEventListener('mousedown', function (e) {
+    var sel = e.target && e.target.closest ? e.target.closest('select') : null;
+    if (!sel || e.button !== 0 || sel.disabled || sel.hasAttribute('data-plain') || ssRealCount(sel) < SS_MIN) return;
+    e.preventDefault();
+    if (ssPop && !ssPop.hidden && ssSel === sel) { ssClose(true); return; }
+    sel.focus(); ssOpen(sel, '');
+  }, true);
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (!t || t.tagName !== 'SELECT' || t.disabled || t.hasAttribute('data-plain') || ssRealCount(t) < SS_MIN || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); ssOpen(t, ''); }
+    else if (e.key.length === 1) { e.preventDefault(); ssOpen(t, e.key); }
+  }, true);
+
+  // =====================================================================================
+  //  Cursor on the Orders page
+  // =====================================================================================
+  function focusRowQty(rid) {
+    setTimeout(function () {
+      var q = document.querySelector('#orderItems .order-row[data-rid="' + rid + '"] .or-qty');
+      if (q) { q.focus(); if (q.select) q.select(); }
+    }, 0);
+  }
+  // after any click on the Orders page that leaves the cursor nowhere useful (a button, blank space) it goes back to the
+  // scan box; clicking into a field to type (quantity, order ID, notes, channel …) is left alone
+  el('viewOrders').addEventListener('click', function () {
+    setTimeout(function () {
+      if (activeView !== 'orders') return;
+      var a = document.activeElement;
+      var inField = a && (a.tagName === 'INPUT' || a.tagName === 'SELECT' || a.tagName === 'TEXTAREA');
+      if (!inField) focusScan();
+    }, 0);
+  });
+
+  // =====================================================================================
+  //  Access changed while the page is open (the Firebase version announces it)
+  // =====================================================================================
+  window.addEventListener('aariro-role', function (e) {
+    var r = e.detail && e.detail.role;
+    if (!r || r === me.fbRole) return;
+    me.fbRole = r; computeRole();
+    showToast('Your access was changed to ' + r.charAt(0).toUpperCase() + r.slice(1) + '.');
   });
 
   // =====================================================================================
