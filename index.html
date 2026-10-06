@@ -119,7 +119,10 @@
 
   /* Table */
   .table-card { background: var(--surface); border: 1px solid var(--border-soft); border-radius: 16px; overflow: hidden; }
-  .table-scroll { max-height: 640px; overflow-y: auto; }
+  .table-scroll { max-height: 640px; overflow: auto; border: 1px solid var(--border-soft); border-radius: 14px; }
+  .table-card .table-scroll { border: 0; border-radius: 0; }          /* the card already has the frame */
+  tfoot th, tfoot td { padding: 13px 16px; text-align: left; font-size: 13.5px; font-weight: 700; color: var(--ink-strong); background: var(--surface-alt); border-top: 1px solid var(--border-soft); text-transform: none; letter-spacing: 0; }
+  tfoot th.num, tfoot td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
   thead th {
     text-align: left; padding: 13px 16px; font-weight: 500; color: var(--ink-soft); font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase;
@@ -266,7 +269,7 @@
   .scan-hint { font-size: 12px; color: var(--ink); white-space: nowrap; }
   @media (max-width: 700px) { .scan-hint { display: none; } }
   .scan-feedback { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 12px; background: var(--blush); color: var(--ink-strong); font-size: 13.5px; margin-bottom: 18px; }
-  .scan-feedback.bad { box-shadow: inset 0 0 0 1px var(--blush-strong); font-weight: 600; }
+  .scan-feedback.bad { box-shadow: inset 0 0 0 1.5px var(--ink-strong); font-weight: 700; }
   .row-actions .icon-btn { color: var(--ink); }
   body.role-viewer .need-edit, body.role-viewer .need-manager, body.role-viewer .need-owner { display: none !important; }
   body.role-editor .need-manager, body.role-editor .need-owner { display: none !important; }
@@ -313,9 +316,12 @@
   .ret-row .rr-inputs { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
   .ret-row .rr-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink); }
   .ret-row .rr-inputs input { width: 110px; }
-  .ret-row .rr-comps { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
-  .ret-row .rr-comp { display: flex; align-items: center; gap: 12px; justify-content: space-between; font-size: 13.5px; color: var(--ink-strong); }
-  .ret-row .rr-comp select { width: 190px; }
+  .ret-row .rr-comps { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .ret-row .rr-comp { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13.5px; color: var(--ink-strong); }
+  .ret-row .rc-name { flex: 1 1 260px; min-width: 200px; }
+  .ret-row .rr-comp label { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+  .ret-row .rr-comp input { width: 84px; }
+  .ret-row .rc-nr { font-size: 12.5px; color: var(--ink); min-width: 120px; }
   .ret-done { color: var(--ink); }
   .ret-row.has-error .or-err { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink-strong); }
   .late-row td { background: var(--blush); }
@@ -526,7 +532,8 @@
                 <div class="field"><label for="retEarlyId">Earlier order ID *</label><input type="text" id="retEarlyId" placeholder="e.g. NYK-0987"></div>
                 <div class="field"><label for="retEarlyDate">Dispatch date *</label><input type="date" id="retEarlyDate"></div>
               </div>
-              <div class="helptext">An order sent before this tool was used. It is saved as an “earlier order”, and what you scan below counts as what was sent. Owners only.</div>
+              <div class="helptext">An order sent before this tool was used. It is saved as an “earlier order”, and what you scan or add below counts as what was sent. Owners only.</div>
+              <div class="field" style="margin-top:12px;"><label for="retAddItem">Add an item</label><select id="retAddItem" data-always-search aria-label="Add an item"></select></div>
             </div>
             <div id="retRows"></div>
             <label class="chk-inline" id="retCloseWrap" hidden style="margin-top:10px;"><input type="checkbox" id="retCloseRest"> Close the rest of this expected return as “not received”</label>
@@ -726,7 +733,7 @@
         <button class="btn btn-primary" id="accessAddBtn" type="button">Grant access</button>
       </div>
       <div class="helptext" style="margin-bottom:10px;">People sign in with this exact Gmail address. Share the link with them yourself. You can change a role or remove someone at any time; you can't change your own.</div>
-      <table class="access-table"><thead><tr><th>Email</th><th>Role</th><th></th></tr></thead><tbody id="accessTableBody"></tbody></table>
+      <div class="table-scroll"><table class="access-table"><thead><tr><th>Email</th><th>Role</th><th></th></tr></thead><tbody id="accessTableBody"></tbody></table></div>
     </div>
   </div>
 </div>
@@ -1482,7 +1489,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       var actionsCell = d.type === 'transfer'
         ? '<div class="row-actions" style="color:var(--ink); font-size:11.5px;">SKU retirement</div>'
         : d.kitParentId
-        ? '<div class="row-actions" style="color:var(--ink-soft); font-size:11.5px;" title="Undo this from the gift box entry above">Part of kit</div>'
+        ? '<div class="row-actions" style="color:var(--ink-soft); font-size:11.5px;" title="Undo this from the Kit / Gift box entry above">Part of kit</div>'
         : '<div class="row-actions"><button class="icon-btn need-edit" data-undo="' + escapeHtml(d.id) + '" aria-label="Undo" title="' + (d.orderRef ? 'Undo this whole order' : 'Undo this entry') + '"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button></div>';
       return '<tr>' +
         '<td><input type="checkbox" class="log-row-cb" data-id="' + escapeHtml(d.id) + '"' + (logSelectedIds[d.id] ? ' checked' : '') + '></td>' +
@@ -1553,6 +1560,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
   function setDispatchType(type) {
     dispatchType = type;
+    clearScanSay();
     Array.prototype.forEach.call(document.querySelectorAll('#dispatchTypeToggle .type-btn'), function (btn) {
       btn.classList.toggle('active', btn.getAttribute('data-type') === type);
     });
@@ -1618,7 +1626,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     document.getElementById('fDispatchNotes').value = '';
     document.getElementById('fDispatchDate').value = todayStr();
     setDispatchType(dispatchType);
-    var sf = document.getElementById('scanFeedback'); if (sf) sf.style.display = 'none';
+    clearScanSay();
     focusScan();
   }
   function focusScan() { setTimeout(function () { var s = document.getElementById('scanInput'); if (s && activeView === 'orders') s.focus(); }, 0); }
@@ -1691,7 +1699,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
                   channel: o.channel,
                   quantity: m.apply,
                   date: o.date,
-                  notes: 'Component of gift box ' + typeLabel(o.type).toLowerCase() + ': ' + (o.p.sku || o.p.name) + (m.short > 0 ? ' — short by ' + m.short + ', stopped at 0' : ''),
+                  notes: 'Component of Kit / Gift box ' + typeLabel(o.type).toLowerCase() + ': ' + (o.p.sku || o.p.name) + (m.short > 0 ? ' — short by ' + m.short + ', stopped at 0' : ''),
                   kitParentId: parentId,
                   createdAt: o.now
                 }, orderFields, cap.extra));
@@ -2002,6 +2010,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   document.getElementById('fDispatchChannel').addEventListener('change', function () {
     document.getElementById('dispatchOtherWrap').style.display = this.value === 'Other' ? 'block' : 'none';
     refreshRowNotes();
+    clearScanSay();
     if (dispatchType === 'return') renderReturnPanel();
   });
 
@@ -2139,7 +2148,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       text = (prod && isKitProduct(prod))
         ? 'Reverse this ' + typeLabel(d.type).toLowerCase() + ' of ' + d.quantity + ' × "' + (d.productName || 'this kit') + '"'
         : (isDispatch ? 'Add ' + d.quantity + ' back to' : 'Remove ' + d.quantity + ' from') + ' "' + (d.productName || 'this product') + '"';
-      if (children.length) text += ', and reverse the ' + children.length + ' linked gift box component ' + (children.length === 1 ? 'entry' : 'entries') + ' too';
+      if (children.length) text += ', and reverse the ' + children.length + ' linked Kit / Gift box component ' + (children.length === 1 ? 'entry' : 'entries') + ' too';
       text += ' — delete this log entry?';
     }
     document.getElementById('undoText').textContent = text;
@@ -2466,7 +2475,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
                 return addLotStep(c, row.quantity, null, row.date, row.source).then(function (extra) {
                   return dbNS.collection('dispatches').add(Object.assign({
                     productId: c.id, productName: c.name, sku: c.sku || '', type: 'restock', channel: row.source,
-                    quantity: row.quantity, date: row.date, notes: 'Component of gift box restock: ' + (p.sku || p.name),
+                    quantity: row.quantity, date: row.date, notes: 'Component of Kit / Gift box restock: ' + (p.sku || p.name),
                     kitParentId: parentId, createdAt: now
                   }, extra));
                 });
@@ -2679,7 +2688,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       '<p class="page-lead">Managers and owners can create SKUs. The SKU, the stock row and the barcode are made in one step.</p>' +
       '<div class="two-col"><div class="card">' +
         '<h2 class="card-title">Build the SKU</h2>' +
-        '<div class="type-toggle" id="crMode" style="max-width:340px; margin-bottom:18px;"><button type="button" class="type-btn active" data-mode="individual">Individual item</button><button type="button" class="type-btn" data-mode="kit">Kit / gift box</button></div>' +
+        '<div class="type-toggle" id="crMode" style="max-width:340px; margin-bottom:18px;"><button type="button" class="type-btn active" data-mode="individual">Individual item</button><button type="button" class="type-btn" data-mode="kit">Kit / Gift box</button></div>' +
         '<div class="grid3">' +
           '<div class="field"><label for="crCat">Category</label><select id="crCat"></select></div>' +
           '<div class="field"><label for="crDes">Design</label><select id="crDes"></select></div>' +
@@ -3133,7 +3142,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var sel = selectedLabelProducts();
     var first = sel.filter(function (p) { return !isKitProduct(p); })[0], firstKit = sel.filter(function (p) { return isKitProduct(p); })[0];
     var show = [first, firstKit].filter(Boolean);
-    el('lbPreview').innerHTML = show.length ? show.map(function (p) { return '<div><div class="helptext" style="margin:0 0 6px; font-weight:600;">' + (isKitProduct(p) ? 'Kit / gift box' : 'Individual item') + '</div>' + labelHtml(p) + '</div>'; }).join('') : '<div class="helptext">Choose a SKU to see its label.</div>';
+    el('lbPreview').innerHTML = show.length ? show.map(function (p) { return '<div><div class="helptext" style="margin:0 0 6px; font-weight:600;">' + (isKitProduct(p) ? 'Kit / Gift box' : 'Individual item') + '</div>' + labelHtml(p) + '</div>'; }).join('') : '<div class="helptext">Choose a SKU to see its label.</div>';
     Array.prototype.forEach.call(el('lbPreview').querySelectorAll('.lb-svg'), function (s) { paintBarcode(s, s.getAttribute('data-sku'), { margin: 0, height: 56, width: 1.5 }); });
   }
 
@@ -3180,11 +3189,15 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   // =====================================================================================
   //  Scanning a barcode adds that item to the order
   // =====================================================================================
+  var scanTimer = null;
+  function clearScanSay() { clearTimeout(scanTimer); var fb = el('scanFeedback'); if (fb) fb.style.display = 'none'; }
   function scanSay(msg, bad) {
-    var fb = el('scanFeedback'); fb.textContent = msg; fb.className = 'scan-feedback' + (bad ? ' bad' : ''); fb.style.display = 'flex';
+    var fb = el('scanFeedback'); fb.textContent = (bad ? '✕  ' : '✓  ') + msg; fb.className = 'scan-feedback' + (bad ? ' bad' : ''); fb.style.display = 'flex';
+    clearTimeout(scanTimer); scanTimer = setTimeout(clearScanSay, 10000);     // like every other message: 10 seconds, or until the next scan
   }
   function handleScan(raw) {
     var code = (raw || '').trim(); if (!code) return;
+    clearScanSay();
     if (dispatchType === 'return') { handleReturnScan(code); return; }
     var p = findBySku(code);
     if (!p) { scanSay('No SKU matches “' + code + '”.', true); return; }
@@ -3218,17 +3231,17 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (kit) {
       var info = kitInfo(p);
       h += '<div style="margin-bottom:12px; color:var(--ink-strong);"><b>' + info.count + ' kit' + (info.count === 1 ? '' : 's') + ' can be made</b>' + (info.limiting ? ' — limited by ' + escapeHtml(info.limiting.name) : '') + '</div>';
-      h += '<table class="details-table"><thead><tr><th>Item</th><th>SKU</th><th class="num">In stock</th></tr></thead><tbody>' +
+      h += '<div class="table-scroll"><table class="details-table"><thead><tr><th>Item</th><th>SKU</th><th class="num">In stock</th></tr></thead><tbody>' +
         info.components.map(function (c) { return '<tr><td>' + escapeHtml(c.name) + (retiredMap[c.id] ? ' <span class="badge retired">Retired</span>' : '') + '</td><td>' + escapeHtml(c.sku) + '</td><td class="num">' + (Number(c.quantity) || 0) + '</td></tr>'; }).join('') +
-        info.missing.map(function (s) { return '<tr><td colspan="2">⚠ ' + escapeHtml(s) + ' is not in the SKU list</td><td class="num">—</td></tr>'; }).join('') + '</tbody></table>';
+        info.missing.map(function (s) { return '<tr><td colspan="2">⚠ ' + escapeHtml(s) + ' is not in the SKU list</td><td class="num">—</td></tr>'; }).join('') + '</tbody></table></div>';
       h += '<p class="helptext" style="margin-top:12px;">A kit has no stock of its own, so it has no cost price or value. Its items are counted in the totals.</p>';
     } else {
       var lots = lotsOf(p).filter(function (l) { return l.qty > 0; }), qty = lotsQty(lots), val = lotsValue(lots);
       if (!lots.length) h += '<p style="margin:0 0 8px;">No stock on hand.</p>';
       else {
-        h += '<table class="details-table"><thead><tr><th>Received</th><th>Source</th><th class="num">Left</th><th class="num">Cost price</th><th class="num">Value</th></tr></thead><tbody>' +
+        h += '<div class="table-scroll"><table class="details-table"><thead><tr><th>Received</th><th>Source</th><th class="num">Left</th><th class="num">Cost price</th><th class="num">Value</th></tr></thead><tbody>' +
           lots.map(function (l) { return '<tr><td>' + (l.date ? escapeHtml(l.date) : '\u2014') + '</td><td>' + escapeHtml(l.source || '\u2014') + '</td><td class="num">' + l.qty + '</td><td class="num">' + fmtCost(l.cost) + '</td><td class="num">' + fmtCost(l.qty * l.cost) + '</td></tr>'; }).join('') +
-          '</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">' + qty + '</th><th class="num">' + (qty ? fmtCost(val / qty) + ' avg' : '') + '</th><th class="num">' + fmtCost(val) + '</th></tr></tfoot></table>';
+          '</tbody><tfoot><tr><th colspan="2">Total</th><th class="num">' + qty + '</th><th class="num">' + (qty ? fmtCost(val / qty) + ' avg' : '') + '</th><th class="num">' + fmtCost(val) + '</th></tr></tfoot></table></div>';
       }
       h += '<p class="helptext" style="margin-top:12px;">Oldest stock is used first, so older lots keep their own cost price. The Cost price on the Stock row is the latest lot.</p>';
     }
@@ -3412,7 +3425,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function onTheWayFor(orderDoc, sku, exceptId) { var t = 0; noticesOpenFor(orderDoc).forEach(function (n) { if (n.id !== exceptId) t += noticeRemaining(n, sku); }); return t; }
   function currentReturnOrder() { return retState.orderDocId ? (ordersList.filter(function (o) { return o.id === retState.orderDocId; })[0] || null) : null; }
   function onOrdersChanged() {
-    if (dispatchType === 'return' && activeView === 'orders') renderReturnPanel();
+    var typing = document.activeElement && el('retRows') && el('retRows').contains(document.activeElement);
+    if (dispatchType === 'return' && activeView === 'orders' && !typing) renderReturnPanel();
     if (activeView === 'returns') renderReturnsView();
     updateRetBadge();
   }
@@ -3489,14 +3503,37 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     sel.innerHTML = h; sel.value = cur || ''; sel.disabled = !ch;
     el('retEarlier').hidden = !retState.earlier;
     el('retOrderHelp').textContent = ch ? (list.length ? 'Type to search by order ID, date or item. Orders with everything returned are greyed out.' : '') : '';
+    if (retState.earlier) fillEarlierItems();
     renderReturnRows(); fixReturnDateBounds();
   }
+  function fillEarlierItems() {
+    var sel = el('retAddItem'); if (!sel) return;
+    var list = activeProducts().slice().sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); });
+    sel.innerHTML = optHtml('', 'Search and choose an item…', true) + list.map(function (p) { return '<option value="' + escapeHtml(p.id) + '" data-search="' + escapeHtml(productHay(p)) + '">' + escapeHtml(p.name + ' · ' + p.sku) + '</option>'; }).join('');
+    sel.value = '';
+  }
+  function initComps(arr) { return arr.map(function (c) { return Object.assign({}, c, { gd: null, dm: '' }); }); }   // gd null = "everything that is not damaged came back good"
   function linesFromOrder(o) {
     return (o.lines || []).map(function (l, i) {
-      var ln = { i: i, sku: l.sku, productId: l.productId, name: l.name, kit: !!l.kit, sent: Number(l.qty) || 0, returned: lineDone(l), onTheWay: onTheWayFor(o.id, l.sku), can: lineCan(l), good: '', damaged: '', qty: '', conds: {}, comps: [], cost: Number(l.cost) || 0 };
-      if (ln.kit) { ln.comps = (l.comps && l.comps.length ? l.comps : kitCompsOf(l.sku)); ln.comps.forEach(function (c) { ln.conds[c.sku] = 'good'; }); }
+      var ln = { i: i, sku: l.sku, productId: l.productId, name: l.name, kit: !!l.kit, sent: Number(l.qty) || 0, returned: lineDone(l), onTheWay: onTheWayFor(o.id, l.sku), can: lineCan(l), good: '', damaged: '', qty: '', comps: [], cost: Number(l.cost) || 0 };
+      if (ln.kit) ln.comps = initComps(l.comps && l.comps.length ? l.comps : kitCompsOf(l.sku));
       return ln;
     });
+  }
+  function kitCompNums(ln, c) {
+    var n = toInt(ln.qty); if (isNaN(n)) n = 0;
+    var d = toInt(c.dm), g = (c.gd === null || c.gd === undefined) ? null : toInt(c.gd);
+    if (isNaN(d)) return { bad: true };
+    if (g === null) g = Math.max(0, n - d);
+    if (isNaN(g)) return { bad: true };
+    return { good: g, damaged: d, missing: n - g - d, over: g + d > n, bad: false };
+  }
+  function compCounts(c) {       // also reads returns saved in the earlier one-condition-per-item format
+    if (c.cond) { var q = Number(c.qty) || 0; return { good: c.cond === 'good' ? q : 0, damaged: c.cond === 'damaged' ? q : 0, missing: c.cond === 'missing' ? q : 0 }; }
+    return { good: Number(c.good) || 0, damaged: Number(c.damaged) || 0, missing: Number(c.missing) || 0 };
+  }
+  function kitItemsText(l) {
+    return (l.comps || []).map(function (c) { var n = compCounts(c), p = []; if (n.good) p.push(n.good + ' good'); if (n.damaged) p.push(n.damaged + ' damaged'); if (n.missing) p.push(n.missing + ' not received'); return c.name + ': ' + (p.join(', ') || 'none'); }).join('; ');
   }
   function kitCompsOf(sku) { var p = findBySku(sku); return p ? (p.kitComponents || []).map(function (s) { var c = findBySku(s); return { sku: s, name: c ? c.name : s, productId: c ? c.id : '', cost: c ? (Number(c.price) || 0) : 0, qty: 0 }; }) : []; }
   function selectReturnOrder(val) {
@@ -3504,6 +3541,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (val === '__earlier__') retState.earlier = true;
     else if (val) { var o = ordersList.filter(function (x) { return x.id === val; })[0]; if (o) { retState.orderDocId = o.id; retState.lines = linesFromOrder(o); } }
     el('retEarlier').hidden = !retState.earlier;
+    if (retState.earlier) fillEarlierItems();
     renderReturnRows(); fixReturnDateBounds();
   }
   function fixReturnDateBounds() {
@@ -3513,10 +3551,19 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   function lineNums(ln) { return ln.kit ? { kits: toInt(ln.qty), good: 0, damaged: 0 } : { kits: 0, good: toInt(ln.good), damaged: toInt(ln.damaged) }; }
   function returnLineProblem(ln) {
-    var n = lineNums(ln), total;
-    if (isNaN(n.kits) || isNaN(n.good) || isNaN(n.damaged)) return 'Whole numbers only.';
-    total = ln.kit ? n.kits : n.good + n.damaged;
-    if (ln.sent != null && total > ln.can) return 'Only ' + ln.can + ' can still be returned from this order.';
+    if (ln.kit) {
+      var n = toInt(ln.qty); if (isNaN(n)) return 'Whole numbers only.';
+      if (ln.sent != null && n > ln.can) return 'Only ' + ln.can + ' can still be returned from this order.';
+      for (var k = 0; k < ln.comps.length; k++) {
+        var cn = kitCompNums(ln, ln.comps[k]);
+        if (cn.bad) return 'Whole numbers only.';
+        if (cn.over) return 'For ' + ln.comps[k].name + ': Good + Damaged is more than the ' + n + ' kit' + (n === 1 ? '' : 's') + ' coming back.';
+      }
+      return '';
+    }
+    var g = toInt(ln.good), d = toInt(ln.damaged);
+    if (isNaN(g) || isNaN(d)) return 'Whole numbers only.';
+    if (ln.sent != null && g + d > ln.can) return 'Only ' + ln.can + ' can still be returned from this order.';
     return '';
   }
   function markReturnErrors() {
@@ -3537,36 +3584,72 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (!done) {
       if (ln.kit) {
         h += '<div class="rr-inputs"><label>Kits coming back<input type="number" min="0" step="1" data-f="qty" data-i="' + i + '" value="' + escapeHtml(ln.qty) + '"></label></div><div class="rr-comps">' +
-          ln.comps.map(function (c) { return '<div class="rr-comp"><span>' + escapeHtml(c.name) + '</span><select data-c="' + escapeHtml(c.sku) + '" data-i="' + i + '" aria-label="Condition of ' + escapeHtml(c.name) + '">' +
-            ['good|Came back — good', 'damaged|Came back — damaged', 'missing|Not received'].map(function (o) { var p = o.split('|'); return '<option value="' + p[0] + '"' + ((ln.conds[c.sku] || 'good') === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select></div>'; }).join('') + '</div>';
+          ln.comps.map(function (c) {
+            var cn = kitCompNums(ln, c);
+            return '<div class="rr-comp" data-c="' + escapeHtml(c.sku) + '"><span class="rc-name">' + escapeHtml(c.name) + '</span>' +
+              '<label>Good<input type="number" min="0" step="1" data-ck="good" data-i="' + i + '" data-c="' + escapeHtml(c.sku) + '" value="' + (cn.bad ? escapeHtml(c.gd) : cn.good) + '"></label>' +
+              '<label>Damaged<input type="number" min="0" step="1" data-ck="damaged" data-i="' + i + '" data-c="' + escapeHtml(c.sku) + '" value="' + escapeHtml(c.dm) + '"></label>' +
+              '<span class="rc-nr">' + (cn.bad ? '' : 'Not received: ' + Math.max(0, cn.missing)) + '</span></div>';
+          }).join('') + '</div>';
       } else {
         h += '<div class="rr-inputs"><label>Good<input type="number" min="0" step="1" data-f="good" data-i="' + i + '" value="' + escapeHtml(ln.good) + '"></label><label>Damaged<input type="number" min="0" step="1" data-f="damaged" data-i="' + i + '" value="' + escapeHtml(ln.damaged) + '"></label></div>';
       }
     }
     return h + '<div class="or-err"></div></div>';
   }
+  function refreshKitComps(rowEl, ln, editing) {
+    ln.comps.forEach(function (c) {
+      var div = rowEl.querySelector('.rr-comp[data-c="' + c.sku + '"]'); if (!div) return;
+      var cn = kitCompNums(ln, c), g = div.querySelector('input[data-ck="good"]'), nr = div.querySelector('.rc-nr');
+      if (!cn.bad && (c.gd === null || c.gd === undefined) && g !== editing) g.value = cn.good;
+      nr.textContent = cn.bad ? '' : 'Not received: ' + Math.max(0, cn.missing);
+    });
+  }
   function renderReturnRows() {
     var host = el('retRows'); if (!host) return;
     el('retCloseWrap').hidden = !retState.noticeId;
     if (!retState.lines.length) {
-      host.innerHTML = '<div class="helptext">' + (retState.earlier ? 'Scan the items that came back from this earlier order.' : (retState.orderDocId ? 'This order has no items.' : 'Choose the seller and the order to see what can be returned. Once an order is chosen you can also scan items.')) + '</div>';
+      host.innerHTML = '<div class="helptext">' + (retState.earlier ? 'Scan the items that came back from this earlier order, or choose them with “Add an item” above.' : (retState.orderDocId ? 'This order has no items.' : 'Choose the seller and the order to see what can be returned. Once an order is chosen you can also scan items.')) + '</div>';
       return;
     }
     host.innerHTML = retState.lines.map(returnRowHtml).join('');
     Array.prototype.forEach.call(host.querySelectorAll('input[data-f]'), function (inp) {
-      inp.addEventListener('input', function () { retState.lines[Number(inp.getAttribute('data-i'))][inp.getAttribute('data-f')] = inp.value; markReturnErrors(); });
+      inp.addEventListener('input', function () {
+        var ln = retState.lines[Number(inp.getAttribute('data-i'))]; ln[inp.getAttribute('data-f')] = inp.value;
+        if (ln.kit && inp.getAttribute('data-f') === 'qty') refreshKitComps(inp.closest('.ret-row'), ln, null);
+        markReturnErrors();
+      });
       inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); focusScan(); } });
     });
-    Array.prototype.forEach.call(host.querySelectorAll('select[data-c]'), function (s) {
-      s.addEventListener('change', function () { retState.lines[Number(s.getAttribute('data-i'))].conds[s.getAttribute('data-c')] = s.value; focusScan(); });
+    Array.prototype.forEach.call(host.querySelectorAll('input[data-ck]'), function (inp) {
+      inp.addEventListener('input', function () {
+        var ln = retState.lines[Number(inp.getAttribute('data-i'))], c = ln.comps.filter(function (x) { return x.sku === inp.getAttribute('data-c'); })[0];
+        if (inp.getAttribute('data-ck') === 'damaged') c.dm = inp.value; else c.gd = inp.value;      // until you type a Good quantity yourself, raising Damaged lowers Good by itself
+        refreshKitComps(inp.closest('.ret-row'), ln, inp); markReturnErrors();
+      });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); focusScan(); } });
     });
     Array.prototype.forEach.call(host.querySelectorAll('[data-rm]'), function (b) {
       b.addEventListener('click', function () { retState.lines.splice(Number(b.getAttribute('data-rm')), 1); renderReturnRows(); focusScan(); });
     });
     markReturnErrors();
   }
-  el('retOrder').addEventListener('change', function () { selectReturnOrder(this.value); focusScan(); });
+  el('retOrder').addEventListener('change', function () { clearScanSay(); selectReturnOrder(this.value); focusScan(); });
   el('retEarlyDate').addEventListener('input', fixReturnDateBounds);
+  el('retAddItem').addEventListener('change', function () {
+    var p = products.filter(function (x) { return x.id === el('retAddItem').value; })[0]; el('retAddItem').value = '';
+    if (!p || !retState.earlier) return;
+    var ln = retState.lines.filter(function (l) { return l.sku === p.sku; })[0];
+    if (!ln) { ln = newEarlierLine(p); retState.lines.push(ln); }
+    renderReturnRows();
+    var inp = el('retRows').querySelector('.ret-row[data-i="' + retState.lines.indexOf(ln) + '"] input[data-f]');
+    if (inp) { inp.focus(); if (inp.select) inp.select(); }
+  });
+  function newEarlierLine(p) {
+    var ln = { i: -1, sku: p.sku, productId: p.id, name: p.name, kit: isKitProduct(p), sent: null, returned: 0, onTheWay: 0, can: Infinity, good: '', damaged: '', qty: '', comps: [], cost: Number(p.price) || 0 };
+    if (ln.kit) ln.comps = initComps(kitCompsOf(p.sku));
+    return ln;
+  }
   function handleReturnScan(code) {
     var p = findBySku(code);
     if (!p) { scanSay('No SKU matches “' + code + '”.', true); return; }
@@ -3575,9 +3658,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var ln = retState.lines.filter(function (l) { return l.sku === p.sku; })[0];
     if (!ln) {
       if (!retState.earlier) { var o = currentReturnOrder(); scanSay(p.sku + ' isn’t in order ' + (o ? o.orderId : '') + ' — only its items can be returned.', true); return; }
-      ln = { i: -1, sku: p.sku, productId: p.id, name: p.name, kit: isKitProduct(p), sent: null, returned: 0, onTheWay: 0, can: Infinity, good: '', damaged: '', qty: '', conds: {}, comps: [], cost: Number(p.price) || 0 };
-      if (ln.kit) { ln.comps = kitCompsOf(p.sku); ln.comps.forEach(function (c) { ln.conds[c.sku] = 'good'; }); }
-      retState.lines.push(ln);
+      ln = newEarlierLine(p); retState.lines.push(ln);
     }
     var n = lineNums(ln), used = ln.kit ? (isNaN(n.kits) ? 0 : n.kits) : (isNaN(n.good) || isNaN(n.damaged) ? 0 : n.good + n.damaged);
     if (ln.sent != null && used >= ln.can) { scanSay('All ' + ln.can + ' returnable unit' + (ln.can === 1 ? '' : 's') + ' of ' + p.name + ' are already counted.', true); renderReturnRows(); return; }
@@ -3631,19 +3712,19 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
           if (it.damaged > 0) s = s.then(function () { return dbNS.collection('dispatches').add({ productId: p.id, productName: p.name, sku: p.sku || '', type: 'damaged', channel: channel, quantity: it.damaged, date: date, notes: 'Damaged on return — not added to stock' + (notes ? ' | ' + notes : ''), orderId: orderId, orderRef: retRef, returnRef: ref, unitCost: cost, createdAt: now }); });
           return s.then(function () { retLines.push({ sku: p.sku, name: p.name, kit: false, good: it.good, damaged: it.damaged, goodValue: roundMoney(it.good * cost), damagedValue: roundMoney(it.damaged * cost), unitCost: cost }); done++; });
         }
-        var moves = [], dmg = [], detail = [];
+        var moves = [], dmg = [], detail = [], n = it.kits;
         ln.comps.forEach(function (c) {
           var cp = findBySku(c.sku) || products.filter(function (x) { return x.id === c.productId; })[0]; if (!cp) return;
-          var cond = ln.conds[c.sku] || 'good', cc = Number(c.cost) || Number(cp.price) || 0;
-          detail.push({ sku: c.sku, name: c.name, cond: cond, qty: it.kits, value: roundMoney(it.kits * cc) });
-          if (cond === 'good') moves.push({ c: cp, have: Number(cp.quantity) || 0, apply: it.kits, short: 0 });
-          else if (cond === 'damaged') dmg.push({ cp: cp, cost: cc });
+          var cn = kitCompNums(ln, c), cc = Number(c.cost) || Number(cp.price) || 0;
+          detail.push({ sku: c.sku, name: c.name, qty: n, good: cn.good, damaged: cn.damaged, missing: Math.max(0, cn.missing), damagedValue: roundMoney(cn.damaged * cc) });
+          if (cn.good > 0) moves.push({ c: cp, have: Number(cp.quantity) || 0, apply: cn.good, short: 0 });
+          if (cn.damaged > 0) dmg.push({ cp: cp, cost: cc, qty: cn.damaged });
         });
-        return writeMovement(Object.assign({}, base, { p: p, qty: it.kits, type: 'return', kitMoves: moves, cost: null })).then(function (res) {
+        return writeMovement(Object.assign({}, base, { p: p, qty: n, type: 'return', kitMoves: moves, cost: null })).then(function (res) {
           var s2 = Promise.resolve();
-          dmg.forEach(function (x) { s2 = s2.then(function () { return dbNS.collection('dispatches').add({ productId: x.cp.id, productName: x.cp.name, sku: x.cp.sku || '', type: 'damaged', channel: channel, quantity: it.kits, date: date, notes: 'Damaged on return (part of ' + (p.sku || p.name) + ') — not added to stock', kitParentId: res.parentId, orderId: orderId, returnRef: ref, unitCost: x.cost, createdAt: now }); }); });
+          dmg.forEach(function (x) { s2 = s2.then(function () { return dbNS.collection('dispatches').add({ productId: x.cp.id, productName: x.cp.name, sku: x.cp.sku || '', type: 'damaged', channel: channel, quantity: x.qty, date: date, notes: 'Damaged on return (item of Kit / Gift box ' + (p.sku || p.name) + ') — not added to stock', kitParentId: res.parentId, orderId: orderId, returnRef: ref, unitCost: x.cost, createdAt: now }); }); });
           return s2;
-        }).then(function () { retLines.push({ sku: p.sku, name: p.name, kit: true, good: it.kits, damaged: 0, goodValue: 0, damagedValue: roundMoney(detail.filter(function (d) { return d.cond === 'damaged'; }).reduce(function (s3, d) { return s3 + d.value; }, 0)), comps: detail }); done++; });
+        }).then(function () { retLines.push({ sku: p.sku, name: p.name, kit: true, good: n, damaged: 0, goodValue: 0, damagedValue: roundMoney(detail.reduce(function (s3, d) { return s3 + d.damagedValue; }, 0)), comps: detail }); done++; });
       });
     });
     chain = chain.then(function () {
@@ -3699,7 +3780,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     returnsList.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''); }).forEach(function (r) {
       (r.lines || []).forEach(function (l) {
         if (!l.kit && Number(l.damaged) > 0) rows.push({ date: r.date, channel: r.channel, orderId: r.orderId, ref: r.returnRef || '', sku: l.sku, name: l.name, qty: Number(l.damaged), unit: Number(l.unitCost) || 0, value: Number(l.damagedValue) || 0 });
-        if (l.kit) (l.comps || []).forEach(function (c) { if (c.cond === 'damaged') rows.push({ date: r.date, channel: r.channel, orderId: r.orderId, ref: r.returnRef || '', sku: c.sku, name: c.name + ' (in ' + l.sku + ')', qty: Number(c.qty) || 0, unit: (Number(c.qty) ? (Number(c.value) || 0) / Number(c.qty) : 0), value: Number(c.value) || 0 }); });
+        if (l.kit) (l.comps || []).forEach(function (c) { var cn = compCounts(c), val = Number(c.damagedValue != null ? c.damagedValue : c.value) || 0; if (cn.damaged > 0) rows.push({ date: r.date, channel: r.channel, orderId: r.orderId, ref: r.returnRef || '', sku: c.sku, name: c.name + ' (in ' + l.sku + ')', qty: cn.damaged, unit: val / cn.damaged, value: val }); });
       });
     });
     return rows;
@@ -3837,7 +3918,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       (r.lines || []).forEach(function (l) {
         var ol = o ? (o.lines || []).filter(function (x) { return x.sku === l.sku; })[0] : null;
         lineRows.push([r.date, r.channel, r.orderId, r.returnRef || '', l.sku, l.name, Number(l.good) || 0, Number(l.damaged) || 0, ol ? Number(ol.qty) || 0 : '', r.dispatchDate || '', roundMoney(l.goodValue), roundMoney(l.damagedValue),
-          l.kit ? (l.comps || []).map(function (c) { return c.name + ': ' + (c.cond === 'good' ? 'good' : c.cond === 'damaged' ? 'damaged' : 'not received'); }).join('; ') : '', r.notes || '']);
+          l.kit ? kitItemsText(l) : '', r.notes || '']);
       });
     });
     var sumRows = [['Seller', 'Order ID', 'Dispatch date', 'SKU', 'Product', 'Sent', 'Returned good', 'Returned damaged', 'Still to come back', 'On the way']];
