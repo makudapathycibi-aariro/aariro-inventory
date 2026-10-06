@@ -300,6 +300,26 @@
   .ss-item[aria-selected="true"] { font-weight: 600; }
   .ss-item[aria-disabled="true"] { color: var(--ink-faint); cursor: not-allowed; }
   .ss-empty { padding: 10px 12px; color: var(--ink); font-size: 13px; }
+  [hidden] { display: none !important; }
+  .chk-inline { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--ink-strong); cursor: pointer; }
+  .chk-inline input { width: 18px; height: 18px; margin: 0; flex: none; }
+  .tab-badge { display: inline-block; min-width: 18px; padding: 1px 6px; margin-left: 4px; border-radius: 999px; background: var(--blush); color: var(--ink-strong); font-size: 11px; font-weight: 700; text-align: center; }
+  .tab-badge.late { background: var(--ink-strong); color: var(--surface); }
+  .rs { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+  .ret-row { border: 1px solid var(--border-soft); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; background: var(--surface); }
+  .ret-row.has-error { border-color: var(--blush-strong); background: var(--blush); }
+  .ret-row .rr-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .ret-row .rr-meta { font-size: 12.5px; color: var(--ink); margin: 3px 0 10px; }
+  .ret-row .rr-inputs { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; }
+  .ret-row .rr-inputs label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 600; color: var(--ink); }
+  .ret-row .rr-inputs input { width: 110px; }
+  .ret-row .rr-comps { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+  .ret-row .rr-comp { display: flex; align-items: center; gap: 12px; justify-content: space-between; font-size: 13.5px; color: var(--ink-strong); }
+  .ret-row .rr-comp select { width: 190px; }
+  .ret-done { color: var(--ink); }
+  .ret-row.has-error .or-err { display: block; margin-top: 8px; font-size: 13px; font-weight: 600; color: var(--ink-strong); }
+  .late-row td { background: var(--blush); }
+  .section-gap { height: 28px; }
   #authGate { position: fixed; inset: 0; background: var(--bg); display: flex; align-items: center; justify-content: center; z-index: 200; padding: 20px; }
   #authGate.hidden { display: none; }
   body:not(.authed) .wrap { display: none; }
@@ -363,6 +383,7 @@
   <nav class="tabs" id="mainTabs" aria-label="Sections">
     <button type="button" class="tab active" data-view="stock">Stock</button>
     <button type="button" class="tab need-edit" data-view="orders">Orders</button>
+    <button type="button" class="tab" data-view="returns">Returns <span class="tab-badge" id="retBadge" hidden></span></button>
     <button type="button" class="tab" data-view="activity">Activity</button>
     <button type="button" class="tab" data-view="skus">Products &amp; SKUs</button>
     <button type="button" class="tab need-edit" data-view="labels">Labels</button>
@@ -480,11 +501,11 @@
           <input type="text" id="fDispatchOther" placeholder="e.g. Amazon">
         </div>
         <div class="field" id="orderIdWrap">
-          <label for="fOrderId">Order ID *</label>
+          <label for="fOrderId" id="fOrderIdLabel">Order ID *</label>
           <input type="text" id="fOrderId" placeholder="e.g. NYK-1234">
         </div>
         <div class="field">
-          <label for="fDispatchDate">Date</label>
+          <label for="fDispatchDate" id="fDispatchDateLabel">Date</label>
           <input type="date" id="fDispatchDate">
         </div>
         <div class="field">
@@ -496,6 +517,20 @@
         <div class="field" id="orderItemsField">
           <label id="orderItemsLabel">Items *</label>
           <div id="orderItems"></div>
+          <div id="returnPanel" hidden>
+            <div class="field"><label for="retOrder">Order *</label>
+              <select id="retOrder" data-always-search aria-label="Order"></select>
+              <div class="helptext" id="retOrderHelp"></div></div>
+            <div id="retEarlier" hidden>
+              <div class="grid2">
+                <div class="field"><label for="retEarlyId">Earlier order ID *</label><input type="text" id="retEarlyId" placeholder="e.g. NYK-0987"></div>
+                <div class="field"><label for="retEarlyDate">Dispatch date *</label><input type="date" id="retEarlyDate"></div>
+              </div>
+              <div class="helptext">An order sent before this tool was used. It is saved as an “earlier order”, and what you scan below counts as what was sent. Owners only.</div>
+            </div>
+            <div id="retRows"></div>
+            <label class="chk-inline" id="retCloseWrap" hidden style="margin-top:10px;"><input type="checkbox" id="retCloseRest"> Close the rest of this expected return as “not received”</label>
+          </div>
           <button type="button" class="btn btn-sm" id="addItemBtn">+ Add an item by hand</button>
         </div>
         <div class="field" id="lotPriceWrap" style="display:none;">
@@ -518,12 +553,16 @@
     </div>
   </section>
 
+  <!-- ===== Returns ===== -->
+  <section class="view" id="viewReturns" hidden></section>
+
   <!-- ===== Activity ===== -->
   <section class="view" id="viewActivity" hidden>
     <div class="log-card">
       <div class="log-head">
         <h2>Recent activity</h2>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <button class="btn" id="logExportReturnsBtn" type="button">Export returns (Excel)</button>
           <button class="btn" id="logExportAllBtn" type="button">Export All</button>
           <button class="btn" id="logExportSelectedBtn" type="button">Export Selected</button>
           <select id="logChannelFilter" aria-label="Channel"><option value="">All channels</option></select>
@@ -844,6 +883,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   var userNS = null, assetsNS = null;
   var ticked = {};           // product ids ticked in the Stock table (for printing labels)
   var activeView = 'stock';
+  var ordersList = [], returnsList = [], expectedList = [];      // dispatch orders, recorded returns, expected returns
+  var retState = { orderDocId: '', earlier: false, lines: [], noticeId: null };
+  var preserveReturnState = false;
 
   var CHANNELS = ['Shopify', 'FirstCry', 'Nykaa', 'All Things Baby', 'Direct to customer'];
 
@@ -1260,6 +1302,18 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         snap.docs.forEach(function (d) { retiredMap[d.id] = d.data() || {}; });
         render();
       }, function () {});
+      dbNS.collection('orders').onSnapshot(function (snap) {
+        ordersList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
+        if (typeof onOrdersChanged === 'function') onOrdersChanged();
+      }, function () {});
+      dbNS.collection('returns').onSnapshot(function (snap) {
+        returnsList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
+        if (typeof onOrdersChanged === 'function') onOrdersChanged();
+      }, function () {});
+      dbNS.collection('expected').onSnapshot(function (snap) {
+        expectedList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
+        if (typeof onOrdersChanged === 'function') onOrdersChanged();
+      }, function () {});
     });
     claude.use('downloads').then(function (ns) { downloadsNS = ns; });
     claude.use('assets').then(function (ns) { assetsNS = ns; if (typeof renderCreate === 'function') renderCreate(); });
@@ -1380,7 +1434,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
 
   function typeLabel(t) {
-    return t === 'restock' ? 'Restock' : (t === 'return' ? 'Return' : (t === 'transfer' ? 'Moved' : 'Dispatch'));
+    return t === 'restock' ? 'Restock' : (t === 'return' ? 'Return' : (t === 'transfer' ? 'Moved' : (t === 'damaged' ? 'Damaged' : 'Dispatch')));
   }
   function logTypeText(d) { return d.type === 'transfer' ? (d.direction === 'out' ? 'Moved out' : 'Moved in') : typeLabel(d.type); }
 
@@ -1390,7 +1444,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     // channel/source filter options + net totals (dispatch subtracts, return & restock add back)
     var totals = {};
     dispatches.forEach(function (d) {
-      if (d.type === 'transfer') return;   // a SKU retirement is not a sale or a purchase
+      if (d.type === 'transfer' || d.type === 'damaged') return;   // not a sale or a purchase, and damaged items never touch stock
       var signed = (d.type === 'dispatch' ? -1 : 1) * (Number(d.quantity) || 0);
       totals[d.channel] = (totals[d.channel] || 0) + signed;
     });
@@ -1423,7 +1477,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
     body.innerHTML = rows.map(function (d) {
       var isOut = d.type === 'dispatch' || (d.type === 'transfer' && d.direction === 'out');
-      var qtyDisplay = (isOut ? '\u2212' : '+') + (Number(d.quantity) || 0);
+      var qtyDisplay = (d.type === 'damaged' ? '' : (isOut ? '\u2212' : '+')) + (Number(d.quantity) || 0);
       var typeBadge = '<span class="type-badge' + (isOut ? '' : ' return') + '">' + logTypeText(d) + '</span>';
       var actionsCell = d.type === 'transfer'
         ? '<div class="row-actions" style="color:var(--ink); font-size:11.5px;">SKU retirement</div>'
@@ -1504,12 +1558,19 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     });
     var isRestock = type === 'restock';
     var isDispatch = type === 'dispatch';
+    var isReturn = type === 'return';
 
     document.getElementById('dispatchTitle').textContent = 'Record ' + typeLabel(type).toLowerCase();
     document.getElementById('fDispatchNotes').placeholder = isRestock ? 'Optional — supplier, batch/invoice number, etc.' : 'Optional — buyer, courier, ' + (isDispatch ? 'packing' : 'return reason') + ' notes, etc.';
     document.getElementById('orderIdWrap').style.display = isRestock ? 'none' : 'block';
-    document.getElementById('orderItemsLabel').textContent = isRestock ? 'Product *' : 'Items *';
-    document.getElementById('addItemBtn').style.display = isRestock ? 'none' : 'inline-flex';
+    document.getElementById('orderItemsLabel').textContent = isRestock ? 'Product *' : (isReturn ? 'Items coming back' : 'Items *');
+    document.getElementById('addItemBtn').style.display = (isRestock || isReturn) ? 'none' : 'inline-flex';
+    document.getElementById('orderItems').style.display = isReturn ? 'none' : '';
+    document.getElementById('returnPanel').hidden = !isReturn;
+    document.getElementById('fOrderIdLabel').textContent = isReturn ? 'Return reference (optional)' : 'Order ID *';
+    document.getElementById('fOrderId').placeholder = isReturn ? 'The seller’s return / RTO number, if any' : 'e.g. NYK-1234';
+    document.getElementById('fDispatchDateLabel').textContent = isReturn ? 'Return date' : 'Date';
+    document.getElementById('fDispatchDate').max = todayStr();
 
     var channelLabel = document.getElementById('fDispatchChannelLabel');
     var channelSel = document.getElementById('fDispatchChannel');
@@ -1531,6 +1592,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     renderOrderRows();
     prefillLotPrice();
     updateSaveLabel();
+    if (isReturn) { if (preserveReturnState) preserveReturnState = false; else resetReturnState(); renderReturnPanel(); }
   }
   Array.prototype.forEach.call(document.querySelectorAll('#dispatchTypeToggle .type-btn'), function (btn) {
     btn.addEventListener('click', function () { setDispatchType(btn.getAttribute('data-type')); focusScan(); });
@@ -1585,11 +1647,12 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function writeMovement(o) {
     var kitProduct = isKitProduct(o.p);
     var parentId = null;
+    var compsOut = [];
     var extra = {};
     var first = Promise.resolve();
     function stateOf(prod) { return (o.session && o.session[prod.id]) ? o.session[prod.id] : prod; }
     function keep(prod, fields) { if (o.session) o.session[prod.id] = Object.assign({}, stateOf(prod), fields); }
-    var orderFields = o.orderId ? { orderId: o.orderId } : {};
+    var orderFields = Object.assign(o.orderId ? { orderId: o.orderId } : {}, o.returnRef ? { returnRef: o.returnRef } : {});
     if (!kitProduct) {
       var ap = applyStock(stateOf(o.p), o.type, o.qty, o.cost, o.date, o.channel, o.now);
       extra = ap.extra;
@@ -1617,6 +1680,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
           chain = chain.then(function () {
             var cap = applyStock(stateOf(m.c), o.type, m.apply, null, o.date, o.channel, o.now);
             keep(m.c, cap.fields);
+            compsOut.push({ sku: m.c.sku || '', name: m.c.name, productId: m.c.id, cost: cap.extra.unitCost, qty: m.apply });
             return dbNS.collection('products').doc(m.c.id).update(cap.fields)
               .then(function () {
                 return dbNS.collection('dispatches').add(Object.assign({
@@ -1634,7 +1698,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
               });
           });
         });
-        return chain;
+        return chain.then(function () { return { parentId: parentId, parentCost: extra.unitCost, comps: compsOut }; });
       });
   }
 
@@ -1922,10 +1986,10 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     orderRows.push(newOrderRow(''));
     itemsChanged(true);
     var sels = document.querySelectorAll('#orderItems .or-product');
-    if (sels.length) { var lastSel = sels[sels.length - 1]; lastSel.focus(); if (ssRealCount(lastSel) >= SS_MIN) ssOpen(lastSel, ''); }
+    if (sels.length) { var lastSel = sels[sels.length - 1]; lastSel.focus(); if (ssWanted(lastSel)) ssOpen(lastSel, ''); }
   });
   document.getElementById('fLotPrice').addEventListener('input', refreshRowNotes);
-  document.getElementById('fDispatchOther').addEventListener('input', refreshRowNotes);
+  document.getElementById('fDispatchOther').addEventListener('input', function () { refreshRowNotes(); if (dispatchType === 'return') renderReturnPanel(); });
 
   document.getElementById('dispatchCancel').addEventListener('click', function () { closeDispatch(); focusScan(); });
   document.getElementById('kitWarnCancel').addEventListener('click', function () { kitConfirmed = false; hideKitWarn(); focusScan(); });
@@ -1938,6 +2002,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   document.getElementById('fDispatchChannel').addEventListener('change', function () {
     document.getElementById('dispatchOtherWrap').style.display = this.value === 'Other' ? 'block' : 'none';
     refreshRowNotes();
+    if (dispatchType === 'return') renderReturnPanel();
   });
 
   document.getElementById('dispatchSave').addEventListener('click', function () {
@@ -1945,6 +2010,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     function fail(msg) { errBox.textContent = msg; errBox.classList.add('show'); }
     clearRowErrors();
     var type = dispatchType, isRestock = type === 'restock';
+    if (type === 'return') { saveReturn(); return; }
     var channel = currentChannel();
     var orderId = document.getElementById('fOrderId').value.trim();
     var date = document.getElementById('fDispatchDate').value || todayStr();
@@ -1962,6 +2028,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       }
     }
     if (!dbNS) { fail('Not connected to shared storage.'); return; }
+    if (date > todayStr()) { fail('The ' + (isRestock ? 'restock' : 'dispatch') + ' date can\'t be in the future.'); return; }
+    if (type === 'dispatch' && findOrderRec(channel, orderId)) { fail('Order ' + orderId + ' already exists for ' + channel + ' — use a different order ID.'); return; }
 
     // Check EVERY item first. If any item can't be done, nothing at all is saved.
     var plan = planOrder(orderRows, type, true, channel);
@@ -1980,17 +2048,17 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     saveBtn.disabled = true;
     var now = new Date().toISOString();
     var orderRef = isRestock ? null : 'O' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    var session = {}, saved = 0, chain = Promise.resolve();
+    var session = {}, saved = 0, results = [], chain = Promise.resolve();
     plan.items.forEach(function (it) {
       chain = chain.then(function () {
         var finalNotes = notes;
         if (it.extra) finalNotes = (finalNotes ? finalNotes + ' | ' : '') + it.extra;
         return writeMovement({ p: it.p, qty: it.qty, type: type, channel: channel, date: date, notes: finalNotes, now: now, kitMoves: it.kitMoves, cost: lotCost, orderId: isRestock ? '' : orderId, orderRef: orderRef, session: session })
-          .then(function () { saved++; });
+          .then(function (res) { saved++; results.push({ it: it, res: res }); });
       });
     });
 
-    chain.then(function () {
+    chain.then(function () { return type === 'dispatch' ? createOrderRecord(channel, orderId, date, orderRef, now, results) : null; }).then(function () {
       saveBtn.disabled = false;
       closeDispatch();
       var partial = plan.items.some(function (it) { return it.extra; });
@@ -2030,6 +2098,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   // Undoing dispatches is refused while returns recorded for the same item and channel would then exceed what was sent.
   // It looks at every item the undo touches (the items of a kit included) and counts exactly as the Return form does.
   function returnsBlockForRecords(records) {
+    var ob = orderBlockMessage(records);
+    if (ob !== undefined) return ob;     // an order record decides exactly; older entries fall back to the item-and-channel rule below
     var drop = {}, names = {};
     records.forEach(function (r) {
       if (r.type !== 'dispatch') return;
@@ -2084,6 +2154,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   // from; a restock removes the lot it created (not possible if some of that lot has since been dispatched).
   // `session` carries the running stock of every product touched while reversing a whole order.
   function planUndo(d, now, session) {
+    if (d.type === 'damaged') return { skip: true };     // damaged items never entered stock
     var p = products.filter(function (x) { return x.id === d.productId; })[0];
     if (!p || isKitProduct(p)) return { skip: true };
     var base = session && session[p.id] ? session[p.id] : p;
@@ -2139,7 +2210,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       chain = chain.then(function () { return undoOneRecord(rec, runSession); });
     });
 
-    chain.then(function () {
+    chain.then(function () { return afterUndo(d, records); }).then(function () {
       closeUndo();
       showToast(anyProduct ? 'Undone — stock adjusted' : 'Log entry removed');
     }).catch(function (err) {
@@ -2481,7 +2552,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   // =====================================================================================
   //  Merged tool: sections, SKUs, lists, retiring, labels, scanning, managers
   // =====================================================================================
-  var VIEWS = ['stock', 'orders', 'activity', 'skus', 'labels'];
+  var VIEWS = ['stock', 'orders', 'returns', 'activity', 'skus', 'labels'];
   var activeSub = 'list';
   var sigs = {};
   function changed(key, sig) { if (sigs[key] === sig) return false; sigs[key] = sig; return true; }
@@ -2498,6 +2569,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (name === 'orders') { refreshOrderOptions(); focusScan(); }
     if (name === 'skus') showSub(activeSub);
     if (name === 'labels') renderLabels();
+    if (name === 'returns') renderReturnsView();
   }
   function showSub(name) {
     if (name === 'create' && !canManage()) name = 'list';
@@ -3113,6 +3185,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   function handleScan(raw) {
     var code = (raw || '').trim(); if (!code) return;
+    if (dispatchType === 'return') { handleReturnScan(code); return; }
     var p = findBySku(code);
     if (!p) { scanSay('No SKU matches “' + code + '”.', true); return; }
     if (isRetired(p)) { scanSay(p.sku + ' is retired and can’t be used.', true); return; }
@@ -3202,6 +3275,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   //  Searchable dropdowns: any list with more than 7 choices gets a search box on top
   // =====================================================================================
   var SS_MIN = 8, ssPop = null, ssSel = null, ssItems = [], ssActive = -1;
+  function ssWanted(sel) { return sel.hasAttribute('data-always-search') || ssRealCount(sel) >= SS_MIN; }
   function ssRealCount(sel) { var n = 0; for (var i = 0; i < sel.options.length; i++) if (sel.options[i].value !== '') n++; return n; }
   function ssEnsure() {
     if (ssPop) return;
@@ -3277,14 +3351,14 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   document.addEventListener('mousedown', function (e) {
     var sel = e.target && e.target.closest ? e.target.closest('select') : null;
-    if (!sel || e.button !== 0 || sel.disabled || sel.hasAttribute('data-plain') || ssRealCount(sel) < SS_MIN) return;
+    if (!sel || e.button !== 0 || sel.disabled || sel.hasAttribute('data-plain') || !ssWanted(sel)) return;
     e.preventDefault();
     if (ssPop && !ssPop.hidden && ssSel === sel) { ssClose(true); return; }
     sel.focus(); ssOpen(sel, '');
   }, true);
   document.addEventListener('keydown', function (e) {
     var t = e.target;
-    if (!t || t.tagName !== 'SELECT' || t.disabled || t.hasAttribute('data-plain') || ssRealCount(t) < SS_MIN || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!t || t.tagName !== 'SELECT' || t.disabled || t.hasAttribute('data-plain') || !ssWanted(t) || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); ssOpen(t, ''); }
     else if (e.key.length === 1) { e.preventDefault(); ssOpen(t, e.key); }
   }, true);
@@ -3318,6 +3392,498 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     me.fbRole = r; computeRole();
     showToast('Your access was changed to ' + r.charAt(0).toUpperCase() + r.slice(1) + '.');
   });
+
+  // =====================================================================================
+  //  Orders, returns, expected returns
+  // =====================================================================================
+  var WAIT_LIMIT_DAYS = 10;
+  function slugKey(s) { return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+  function orderDocId(channel, oid) { return slugKey(channel) + '__' + slugKey(oid); }
+  function findOrderRec(channel, oid) { var id = orderDocId(channel, oid); return ordersList.filter(function (o) { return o.id === id; })[0] || null; }
+  function lineDone(l) { return (Number(l.good) || 0) + (Number(l.damaged) || 0); }
+  function lineCan(l) { return Math.max(0, (Number(l.qty) || 0) - lineDone(l)); }
+  function orderComplete(o) { return !!(o.lines && o.lines.length) && o.lines.every(function (l) { return lineCan(l) === 0; }); }
+  function fmtDay(s) { if (!s) return ''; var d = new Date(s + 'T00:00:00'); return isNaN(d.getTime()) ? s : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  function daysBetween(a, b) { return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000); }
+  function toInt(v) { var s = String(v == null ? '' : v).trim(); if (s === '') return 0; var n = Number(s); return (isNaN(n) || n < 0 || n !== Math.floor(n)) ? NaN : n; }
+  function noticeRemaining(n, sku) { var l = (n.lines || []).filter(function (x) { return x.sku === sku; })[0]; return l ? Math.max(0, (Number(l.qty) || 0) - (Number((n.received || {})[sku]) || 0)) : 0; }
+  function noticeOpen(n) { return n.status === 'open' && (n.lines || []).some(function (l) { return noticeRemaining(n, l.sku) > 0; }); }
+  function noticesOpenFor(orderDoc) { return expectedList.filter(function (n) { return n.orderDocId === orderDoc && noticeOpen(n); }); }
+  function onTheWayFor(orderDoc, sku, exceptId) { var t = 0; noticesOpenFor(orderDoc).forEach(function (n) { if (n.id !== exceptId) t += noticeRemaining(n, sku); }); return t; }
+  function currentReturnOrder() { return retState.orderDocId ? (ordersList.filter(function (o) { return o.id === retState.orderDocId; })[0] || null) : null; }
+  function onOrdersChanged() {
+    if (dispatchType === 'return' && activeView === 'orders') renderReturnPanel();
+    if (activeView === 'returns') renderReturnsView();
+    updateRetBadge();
+  }
+
+  // ---- the order record written with every dispatch ----
+  function createOrderRecord(channel, orderId, date, orderRef, now, results) {
+    var lines = results.map(function (r) {
+      var kit = isKitProduct(r.it.p), res = r.res || {};
+      var line = { sku: r.it.p.sku, productId: r.it.p.id, name: r.it.p.name, kit: kit, qty: r.it.qty, good: 0, damaged: 0 };
+      if (kit) line.comps = (res.comps || []).map(function (c) { return { sku: c.sku, productId: c.productId, name: c.name, cost: Number(c.cost) || 0, qty: c.qty }; });
+      else line.cost = Number(res.parentCost) || 0;
+      return line;
+    });
+    return dbNS.doc('orders/' + orderDocId(channel, orderId)).set({ channel: channel, orderId: orderId, date: date, external: false, orderRef: orderRef, createdAt: now, createdBy: me.name || '', lines: lines });
+  }
+  // undo of a dispatch: refused while anything came back (or is on its way) against that exact order
+  function orderBlockMessage(records) {
+    var parents = records.filter(function (r) { return r.type === 'dispatch' && !r.kitParentId && r.orderRef; });
+    for (var i = 0; i < parents.length; i++) {
+      var ord = ordersList.filter(function (o) { return o.orderRef === parents[i].orderRef; })[0];
+      if (!ord) continue;
+      var back = (ord.lines || []).reduce(function (s, l) { return s + lineDone(l); }, 0);
+      if (back > 0) return 'Can\'t undo — ' + (back === 1 ? '1 unit of this order was' : back + ' units of this order were') + ' already returned. Undo the return first.';
+      if (noticesOpenFor(ord.id).length) return 'Can\'t undo — an expected return is waiting on this order. Ask the owner to cancel that notice first.';
+      return null;
+    }
+    return undefined;
+  }
+  function afterUndo(d, records) {
+    var ref = d.orderRef; if (!ref) return Promise.resolve();
+    var chain = Promise.resolve();
+    var ord = (d.type === 'dispatch') ? ordersList.filter(function (o) { return o.orderRef === ref; })[0] : null;
+    if (ord) chain = chain.then(function () { return dbNS.doc('orders/' + ord.id).delete(); });
+    var ret = returnsList.filter(function (r) { return r.orderRef === ref; })[0];
+    if (ret) {
+      chain = chain.then(function () { return dbNS.doc('returns/' + ret.id).delete(); }).then(function () {
+        var o = ordersList.filter(function (x) { return x.id === ret.orderDocId; })[0];
+        if (!o) return null;
+        var lines = o.lines.map(function (l) {
+          var m = (ret.lines || []).filter(function (x) { return x.sku === l.sku; })[0]; if (!m) return l;
+          var u = Object.assign({}, l, { good: Math.max(0, (Number(l.good) || 0) - (Number(m.good) || 0)), damaged: Math.max(0, (Number(l.damaged) || 0) - (Number(m.damaged) || 0)) });
+          if (o.external) u.qty = Math.max(0, (Number(l.qty) || 0) - (Number(m.good) || 0) - (Number(m.damaged) || 0));
+          return u;
+        });
+        if (o.external) { lines = lines.filter(function (l) { return (Number(l.qty) || 0) > 0 || lineDone(l) > 0; }); if (!lines.length) return dbNS.doc('orders/' + o.id).delete(); }
+        return dbNS.doc('orders/' + o.id).update({ lines: lines });
+      }).then(function () {
+        var n = ret.noticeId ? expectedList.filter(function (x) { return x.id === ret.noticeId; })[0] : null;
+        if (!n) return null;
+        var rec = Object.assign({}, n.received || {});
+        (ret.lines || []).forEach(function (m) { rec[m.sku] = Math.max(0, (Number(rec[m.sku]) || 0) - (Number(m.good) || 0) - (Number(m.damaged) || 0)); });
+        return dbNS.doc('expected/' + n.id).update({ received: rec, status: 'open', closedReason: '' });
+      });
+    }
+    return chain;
+  }
+
+  // ---- the Return form: seller → order → what that order sent ----
+  function resetReturnState() { retState = { orderDocId: '', earlier: false, lines: [], noticeId: null }; }
+  function renderReturnPanel() {
+    var sel = el('retOrder'), ch = currentChannel();
+    var list = ch ? ordersList.filter(function (o) { return o.channel === ch; }) : [];
+    list.sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (a.orderId || '').localeCompare(b.orderId || ''); });
+    var cur = retState.earlier ? '__earlier__' : retState.orderDocId;
+    if (cur && cur !== '__earlier__' && !list.some(function (o) { return o.id === cur; })) { resetReturnState(); cur = ''; }
+    var h = optHtml('', ch ? (list.length ? 'Choose an order…' : 'No orders recorded for ' + ch + ' yet') : 'Choose the seller first', !cur);
+    list.forEach(function (o) {
+      var done = orderComplete(o), n = (o.lines || []).length, back = (o.lines || []).reduce(function (s, l) { return s + lineDone(l); }, 0);
+      var text = o.orderId + ' · ' + fmtDay(o.date) + ' · ' + n + ' item' + (n === 1 ? '' : 's') + (done ? ' · Return complete' : (back ? ' · partly returned' : '')) + (o.external ? ' · earlier order' : '');
+      var hay = qNorm([o.orderId, o.date, fmtDay(o.date), o.channel, (o.lines || []).map(function (l) { return l.sku + ' ' + l.name; }).join(' ')].join(' '));
+      h += '<option value="' + escapeHtml(o.id) + '"' + (cur === o.id ? ' selected' : '') + (done ? ' disabled' : '') + ' data-search="' + escapeHtml(hay) + '">' + escapeHtml(text) + '</option>';
+    });
+    if (me.role === 'owner' && ch) h += optHtml('__earlier__', 'Earlier order (not in this tool)…', cur === '__earlier__');   // last: it is rarely needed
+    sel.innerHTML = h; sel.value = cur || ''; sel.disabled = !ch;
+    el('retEarlier').hidden = !retState.earlier;
+    el('retOrderHelp').textContent = ch ? (list.length ? 'Type to search by order ID, date or item. Orders with everything returned are greyed out.' : '') : '';
+    renderReturnRows(); fixReturnDateBounds();
+  }
+  function linesFromOrder(o) {
+    return (o.lines || []).map(function (l, i) {
+      var ln = { i: i, sku: l.sku, productId: l.productId, name: l.name, kit: !!l.kit, sent: Number(l.qty) || 0, returned: lineDone(l), onTheWay: onTheWayFor(o.id, l.sku), can: lineCan(l), good: '', damaged: '', qty: '', conds: {}, comps: [], cost: Number(l.cost) || 0 };
+      if (ln.kit) { ln.comps = (l.comps && l.comps.length ? l.comps : kitCompsOf(l.sku)); ln.comps.forEach(function (c) { ln.conds[c.sku] = 'good'; }); }
+      return ln;
+    });
+  }
+  function kitCompsOf(sku) { var p = findBySku(sku); return p ? (p.kitComponents || []).map(function (s) { var c = findBySku(s); return { sku: s, name: c ? c.name : s, productId: c ? c.id : '', cost: c ? (Number(c.price) || 0) : 0, qty: 0 }; }) : []; }
+  function selectReturnOrder(val) {
+    resetReturnState();
+    if (val === '__earlier__') retState.earlier = true;
+    else if (val) { var o = ordersList.filter(function (x) { return x.id === val; })[0]; if (o) { retState.orderDocId = o.id; retState.lines = linesFromOrder(o); } }
+    el('retEarlier').hidden = !retState.earlier;
+    renderReturnRows(); fixReturnDateBounds();
+  }
+  function fixReturnDateBounds() {
+    var d = el('fDispatchDate'), o = currentReturnOrder(), min = o ? o.date : (retState.earlier ? el('retEarlyDate').value : '');
+    d.max = todayStr(); d.min = min || '';
+    el('retEarlyDate').max = todayStr();
+  }
+  function lineNums(ln) { return ln.kit ? { kits: toInt(ln.qty), good: 0, damaged: 0 } : { kits: 0, good: toInt(ln.good), damaged: toInt(ln.damaged) }; }
+  function returnLineProblem(ln) {
+    var n = lineNums(ln), total;
+    if (isNaN(n.kits) || isNaN(n.good) || isNaN(n.damaged)) return 'Whole numbers only.';
+    total = ln.kit ? n.kits : n.good + n.damaged;
+    if (ln.sent != null && total > ln.can) return 'Only ' + ln.can + ' can still be returned from this order.';
+    return '';
+  }
+  function markReturnErrors() {
+    Array.prototype.forEach.call(el('retRows').querySelectorAll('.ret-row'), function (rowEl) {
+      var ln = retState.lines[Number(rowEl.getAttribute('data-i'))]; if (!ln) return;
+      var msg = returnLineProblem(ln);
+      rowEl.classList.toggle('has-error', !!msg);
+      rowEl.querySelector('.or-err').textContent = msg;
+    });
+  }
+  function returnRowHtml(ln, i) {
+    var done = ln.sent != null && ln.can === 0;
+    var meta = ln.sent == null ? 'Earlier order — what you enter counts as what was sent.'
+      : 'Sent ' + ln.sent + ' · Returned ' + ln.returned + (ln.onTheWay ? ' · On the way ' + ln.onTheWay : '') + ' · <b>' + (done ? 'Return complete' : 'Can return ' + ln.can) + '</b>';
+    var h = '<div class="ret-row' + (done ? ' ret-done' : '') + '" data-i="' + i + '"><div class="rr-head"><b style="color:var(--ink-strong);">' + escapeHtml(ln.name) + (ln.kit ? '<span class="kit-tag">Kit</span>' : '') + '</b><span class="prod-sku">' + escapeHtml(ln.sku) + '</span>' +
+      (ln.sent == null ? '<button type="button" class="icon-btn" data-rm="' + i + '" aria-label="Remove this item" style="margin-left:auto;">✕</button>' : '') + '</div>' +
+      '<div class="rr-meta">' + meta + '</div>';
+    if (!done) {
+      if (ln.kit) {
+        h += '<div class="rr-inputs"><label>Kits coming back<input type="number" min="0" step="1" data-f="qty" data-i="' + i + '" value="' + escapeHtml(ln.qty) + '"></label></div><div class="rr-comps">' +
+          ln.comps.map(function (c) { return '<div class="rr-comp"><span>' + escapeHtml(c.name) + '</span><select data-c="' + escapeHtml(c.sku) + '" data-i="' + i + '" aria-label="Condition of ' + escapeHtml(c.name) + '">' +
+            ['good|Came back — good', 'damaged|Came back — damaged', 'missing|Not received'].map(function (o) { var p = o.split('|'); return '<option value="' + p[0] + '"' + ((ln.conds[c.sku] || 'good') === p[0] ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('') + '</select></div>'; }).join('') + '</div>';
+      } else {
+        h += '<div class="rr-inputs"><label>Good<input type="number" min="0" step="1" data-f="good" data-i="' + i + '" value="' + escapeHtml(ln.good) + '"></label><label>Damaged<input type="number" min="0" step="1" data-f="damaged" data-i="' + i + '" value="' + escapeHtml(ln.damaged) + '"></label></div>';
+      }
+    }
+    return h + '<div class="or-err"></div></div>';
+  }
+  function renderReturnRows() {
+    var host = el('retRows'); if (!host) return;
+    el('retCloseWrap').hidden = !retState.noticeId;
+    if (!retState.lines.length) {
+      host.innerHTML = '<div class="helptext">' + (retState.earlier ? 'Scan the items that came back from this earlier order.' : (retState.orderDocId ? 'This order has no items.' : 'Choose the seller and the order to see what can be returned. Once an order is chosen you can also scan items.')) + '</div>';
+      return;
+    }
+    host.innerHTML = retState.lines.map(returnRowHtml).join('');
+    Array.prototype.forEach.call(host.querySelectorAll('input[data-f]'), function (inp) {
+      inp.addEventListener('input', function () { retState.lines[Number(inp.getAttribute('data-i'))][inp.getAttribute('data-f')] = inp.value; markReturnErrors(); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); focusScan(); } });
+    });
+    Array.prototype.forEach.call(host.querySelectorAll('select[data-c]'), function (s) {
+      s.addEventListener('change', function () { retState.lines[Number(s.getAttribute('data-i'))].conds[s.getAttribute('data-c')] = s.value; focusScan(); });
+    });
+    Array.prototype.forEach.call(host.querySelectorAll('[data-rm]'), function (b) {
+      b.addEventListener('click', function () { retState.lines.splice(Number(b.getAttribute('data-rm')), 1); renderReturnRows(); focusScan(); });
+    });
+    markReturnErrors();
+  }
+  el('retOrder').addEventListener('change', function () { selectReturnOrder(this.value); focusScan(); });
+  el('retEarlyDate').addEventListener('input', fixReturnDateBounds);
+  function handleReturnScan(code) {
+    var p = findBySku(code);
+    if (!p) { scanSay('No SKU matches “' + code + '”.', true); return; }
+    if (isRetired(p)) { scanSay(p.sku + ' is retired and can’t be used.', true); return; }
+    if (!retState.orderDocId && !retState.earlier) { scanSay('Choose the seller and the order first, then scan.', true); return; }
+    var ln = retState.lines.filter(function (l) { return l.sku === p.sku; })[0];
+    if (!ln) {
+      if (!retState.earlier) { var o = currentReturnOrder(); scanSay(p.sku + ' isn’t in order ' + (o ? o.orderId : '') + ' — only its items can be returned.', true); return; }
+      ln = { i: -1, sku: p.sku, productId: p.id, name: p.name, kit: isKitProduct(p), sent: null, returned: 0, onTheWay: 0, can: Infinity, good: '', damaged: '', qty: '', conds: {}, comps: [], cost: Number(p.price) || 0 };
+      if (ln.kit) { ln.comps = kitCompsOf(p.sku); ln.comps.forEach(function (c) { ln.conds[c.sku] = 'good'; }); }
+      retState.lines.push(ln);
+    }
+    var n = lineNums(ln), used = ln.kit ? (isNaN(n.kits) ? 0 : n.kits) : (isNaN(n.good) || isNaN(n.damaged) ? 0 : n.good + n.damaged);
+    if (ln.sent != null && used >= ln.can) { scanSay('All ' + ln.can + ' returnable unit' + (ln.can === 1 ? '' : 's') + ' of ' + p.name + ' are already counted.', true); renderReturnRows(); return; }
+    if (ln.kit) ln.qty = String((isNaN(n.kits) ? 0 : n.kits) + 1); else ln.good = String((isNaN(n.good) ? 0 : n.good) + 1);
+    renderReturnRows();
+    scanSay('Counted ' + p.name + ' · ' + p.sku + ' (' + (ln.kit ? ln.qty + ' kit' + (ln.qty === '1' ? '' : 's') : ln.good + ' good') + ')', false);
+  }
+
+  function saveReturn() {
+    var errBox = el('dispatchError');
+    function fail(msg) { errBox.textContent = msg; errBox.classList.add('show'); }
+    errBox.classList.remove('show');
+    if (!dbNS) { fail('Not connected to shared storage.'); return; }
+    var channel = currentChannel();
+    if (!channel) { fail('Choose the seller first.'); return; }
+    var earlier = retState.earlier, order = earlier ? null : currentReturnOrder(), orderId, dispatchDate;
+    if (earlier) {
+      if (me.role !== 'owner') { fail('Only an owner can record an earlier order.'); return; }
+      orderId = el('retEarlyId').value.trim(); dispatchDate = el('retEarlyDate').value;
+      if (!orderId) { fail('Enter the earlier order ID.'); return; }
+      if (!dispatchDate) { fail('Enter the dispatch date of that earlier order.'); return; }
+      if (dispatchDate > todayStr()) { fail('The dispatch date can\'t be in the future.'); return; }
+      if (findOrderRec(channel, orderId)) { fail('Order ' + orderId + ' is already in the list for ' + channel + ' — choose it from the list instead.'); return; }
+    } else {
+      if (!order) { fail('Choose the order the items belong to.'); return; }
+      orderId = order.orderId; dispatchDate = order.date;
+    }
+    var date = el('fDispatchDate').value || todayStr();
+    if (date > todayStr()) { fail('The return date can\'t be in the future.'); return; }
+    if (dispatchDate && date < dispatchDate) { fail('The return date can\'t be before the dispatch date (' + fmtDay(dispatchDate) + ').'); return; }
+    var ref = el('fOrderId').value.trim(), notes = el('fDispatchNotes').value.trim();
+    var items = [], bad = false;
+    retState.lines.forEach(function (ln) {
+      if (returnLineProblem(ln)) bad = true;
+      var n = lineNums(ln), total = ln.kit ? n.kits : n.good + n.damaged;
+      if (total > 0) items.push({ ln: ln, good: n.good, damaged: n.damaged, kits: n.kits });
+    });
+    if (bad) { markReturnErrors(); fail('Nothing was saved — fix the marked lines first.'); return; }
+    if (!items.length) { fail('Enter what came back — at least one item.'); return; }
+    var prodOf = function (ln) { return products.filter(function (x) { return x.id === ln.productId || x.sku === ln.sku; })[0]; };
+    for (var k = 0; k < items.length; k++) { var pp = prodOf(items[k].ln); if (!pp || isRetired(pp)) { fail((pp ? pp.sku : items[k].ln.sku) + ' is retired or missing and can\'t be returned to stock.'); return; } }
+
+    var saveBtn = el('dispatchSave'); saveBtn.disabled = true;
+    var now = nowIso(), retRef = 'R' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), session = {}, chain = Promise.resolve(), retLines = [], done = 0;
+    var base = { channel: channel, date: date, notes: notes, now: now, orderId: orderId, orderRef: retRef, returnRef: ref, session: session };
+    items.forEach(function (it) {
+      chain = chain.then(function () {
+        var ln = it.ln, p = prodOf(ln), cost = Number(ln.cost) || Number(p.price) || 0, s = Promise.resolve();
+        if (!ln.kit) {
+          if (it.good > 0) s = s.then(function () { return writeMovement(Object.assign({}, base, { p: p, qty: it.good, type: 'return', kitMoves: [], cost: null })); });
+          if (it.damaged > 0) s = s.then(function () { return dbNS.collection('dispatches').add({ productId: p.id, productName: p.name, sku: p.sku || '', type: 'damaged', channel: channel, quantity: it.damaged, date: date, notes: 'Damaged on return — not added to stock' + (notes ? ' | ' + notes : ''), orderId: orderId, orderRef: retRef, returnRef: ref, unitCost: cost, createdAt: now }); });
+          return s.then(function () { retLines.push({ sku: p.sku, name: p.name, kit: false, good: it.good, damaged: it.damaged, goodValue: roundMoney(it.good * cost), damagedValue: roundMoney(it.damaged * cost), unitCost: cost }); done++; });
+        }
+        var moves = [], dmg = [], detail = [];
+        ln.comps.forEach(function (c) {
+          var cp = findBySku(c.sku) || products.filter(function (x) { return x.id === c.productId; })[0]; if (!cp) return;
+          var cond = ln.conds[c.sku] || 'good', cc = Number(c.cost) || Number(cp.price) || 0;
+          detail.push({ sku: c.sku, name: c.name, cond: cond, qty: it.kits, value: roundMoney(it.kits * cc) });
+          if (cond === 'good') moves.push({ c: cp, have: Number(cp.quantity) || 0, apply: it.kits, short: 0 });
+          else if (cond === 'damaged') dmg.push({ cp: cp, cost: cc });
+        });
+        return writeMovement(Object.assign({}, base, { p: p, qty: it.kits, type: 'return', kitMoves: moves, cost: null })).then(function (res) {
+          var s2 = Promise.resolve();
+          dmg.forEach(function (x) { s2 = s2.then(function () { return dbNS.collection('dispatches').add({ productId: x.cp.id, productName: x.cp.name, sku: x.cp.sku || '', type: 'damaged', channel: channel, quantity: it.kits, date: date, notes: 'Damaged on return (part of ' + (p.sku || p.name) + ') — not added to stock', kitParentId: res.parentId, orderId: orderId, returnRef: ref, unitCost: x.cost, createdAt: now }); }); });
+          return s2;
+        }).then(function () { retLines.push({ sku: p.sku, name: p.name, kit: true, good: it.kits, damaged: 0, goodValue: 0, damagedValue: roundMoney(detail.filter(function (d) { return d.cond === 'damaged'; }).reduce(function (s3, d) { return s3 + d.value; }, 0)), comps: detail }); done++; });
+      });
+    });
+    chain = chain.then(function () {
+      return dbNS.collection('returns').add({ createdAt: now, date: date, channel: channel, orderId: orderId, orderDocId: orderDocId(channel, orderId), returnRef: ref, orderRef: retRef, source: retState.noticeId ? 'notice' : 'direct', noticeId: retState.noticeId || '', earlier: earlier, dispatchDate: dispatchDate, createdBy: me.name || '', notes: notes, lines: retLines });
+    }).then(function () {
+      if (earlier) {
+        var lines = items.map(function (it) {
+          var ln = it.ln, l = { sku: ln.sku, productId: ln.productId, name: ln.name, kit: ln.kit, qty: ln.kit ? it.kits : it.good + it.damaged, good: ln.kit ? it.kits : it.good, damaged: ln.kit ? 0 : it.damaged };
+          if (ln.kit) l.comps = ln.comps; else l.cost = Number(ln.cost) || 0;
+          return l;
+        });
+        return dbNS.doc('orders/' + orderDocId(channel, orderId)).set({ channel: channel, orderId: orderId, date: dispatchDate, external: true, orderRef: '', createdAt: now, createdBy: me.name || '', lines: lines });
+      }
+      var upd = order.lines.map(function (l, i) {
+        var it = items.filter(function (x) { return x.ln.i === i; })[0]; if (!it) return l;
+        return Object.assign({}, l, it.ln.kit ? { good: (Number(l.good) || 0) + it.kits } : { good: (Number(l.good) || 0) + it.good, damaged: (Number(l.damaged) || 0) + it.damaged });
+      });
+      return dbNS.doc('orders/' + order.id).update({ lines: upd });
+    }).then(function () {
+      var n = retState.noticeId ? expectedList.filter(function (x) { return x.id === retState.noticeId; })[0] : null;
+      if (!n) return null;
+      var rec = Object.assign({}, n.received || {});
+      items.forEach(function (it) { rec[it.ln.sku] = (Number(rec[it.ln.sku]) || 0) + (it.ln.kit ? it.kits : it.good + it.damaged); });
+      var tmp = Object.assign({}, n, { received: rec }), stillOpen = noticeOpen(tmp), upd = { received: rec };
+      if (!stillOpen) { upd.status = 'received'; upd.receivedAt = now; }
+      else if (el('retCloseRest').checked) { upd.status = 'closed'; upd.closedReason = 'not received'; upd.closedAt = now; }
+      return dbNS.doc('expected/' + n.id).update(upd);
+    });
+    chain.then(function () {
+      saveBtn.disabled = false;
+      var g = retLines.reduce(function (s, l) { return s + (l.kit ? 0 : l.good); }, 0), dm = retLines.reduce(function (s, l) { return s + (l.kit ? 0 : l.damaged); }, 0), kits = retLines.reduce(function (s, l) { return s + (l.kit ? l.good : 0); }, 0);
+      closeDispatch();
+      showToast('Return recorded — ' + channel + ', order ' + orderId + (g ? ': ' + g + ' back in stock' : '') + (kits ? (g ? ', ' : ': ') + kits + ' kit' + (kits === 1 ? '' : 's') : '') + (dm ? ', ' + dm + ' damaged (not counted as stock)' : '') + '.');
+    }).catch(function (err) {
+      saveBtn.disabled = false;
+      if (isWritePermissionError(err)) { closeDispatch(); showPermBanner('You have view-only access to this inventory. Ask the store owner to give you edit access to make changes.'); }
+      else if (done > 0) { closeDispatch(); showPermBanner('Part of this return was saved before the connection failed. Check Recent activity — you can undo it from there and record it again.'); }
+      else fail('Could not save — please try again.');
+    });
+  }
+
+  // =====================================================================================
+  //  Returns tab: expected returns (RTO), damaged returns, exports
+  // =====================================================================================
+  var rtBuilt = false, rtArm = null;   // rtArm: a destructive button that has been clicked once and now asks for a second click
+  function updateRetBadge() {
+    var open = expectedList.filter(noticeOpen), late = open.some(function (n) { return daysBetween(n.emailDate || todayStr(), todayStr()) >= WAIT_LIMIT_DAYS; });
+    var b = el('retBadge'); if (!b) return;
+    b.hidden = !open.length; b.textContent = open.length; b.classList.toggle('late', late);
+  }
+  function damagedRows() {
+    var rows = [];
+    returnsList.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''); }).forEach(function (r) {
+      (r.lines || []).forEach(function (l) {
+        if (!l.kit && Number(l.damaged) > 0) rows.push({ date: r.date, channel: r.channel, orderId: r.orderId, ref: r.returnRef || '', sku: l.sku, name: l.name, qty: Number(l.damaged), unit: Number(l.unitCost) || 0, value: Number(l.damagedValue) || 0 });
+        if (l.kit) (l.comps || []).forEach(function (c) { if (c.cond === 'damaged') rows.push({ date: r.date, channel: r.channel, orderId: r.orderId, ref: r.returnRef || '', sku: c.sku, name: c.name + ' (in ' + l.sku + ')', qty: Number(c.qty) || 0, unit: (Number(c.qty) ? (Number(c.value) || 0) / Number(c.qty) : 0), value: Number(c.value) || 0 }); });
+      });
+    });
+    return rows;
+  }
+  function buildReturnsView() {
+    el('viewReturns').innerHTML =
+      '<div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:16px;"><h1 class="page-title" style="margin:0;">Returns</h1>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary need-edit" id="rtNew">+ Record an expected return</button><button type="button" class="btn" id="rtExpWaiting">Export waiting list (Excel)</button><button type="button" class="btn" id="rtExpReturns">Export returns (Excel)</button></div></div>' +
+      '<p class="page-lead">Parcels the sellers have told you are coming back. Stock changes only when you press <b>Receive</b> and confirm what actually arrived.</p>' +
+      '<div class="card need-edit" id="rtForm" hidden style="margin-bottom:24px;"><h2 class="card-title">Record an expected return</h2><div class="form-error" id="rtError"></div>' +
+        '<div class="grid2"><div class="field"><label for="rtChannel">Seller *</label><select id="rtChannel"></select></div><div class="field"><label for="rtOrder">Order *</label><select id="rtOrder" data-always-search></select></div></div>' +
+        '<div id="rtLines"></div>' +
+        '<div class="grid2"><div class="field"><label for="rtRef">Seller\'s reference / tracking number</label><input type="text" id="rtRef" placeholder="Optional"></div><div class="field"><label for="rtDate">Date of the seller\'s email</label><input type="date" id="rtDate"></div></div>' +
+        '<div class="modal-foot" style="border-top:1px solid var(--border-soft); padding-top:14px;"><button type="button" class="btn" id="rtCancel">Cancel</button><button type="button" class="btn btn-primary" id="rtSave">Save notice</button></div></div>' +
+      '<div class="card" id="rtWaiting"></div><div class="section-gap"></div><div class="card" id="rtDamaged"></div>';
+    el('rtNew').addEventListener('click', function () { openNoticeForm(); });
+    el('rtCancel').addEventListener('click', function () { el('rtForm').hidden = true; });
+    el('rtChannel').addEventListener('change', fillNoticeOrders);
+    el('rtOrder').addEventListener('change', fillNoticeLines);
+    el('rtSave').addEventListener('click', saveNotice);
+    el('rtExpWaiting').addEventListener('click', exportWaitingList);
+    el('rtExpReturns').addEventListener('click', exportReturns);
+    rtBuilt = true;
+  }
+  function renderReturnsView() {
+    if (!rtBuilt) buildReturnsView();
+    var open = expectedList.filter(noticeOpen).sort(function (a, b) { return (a.emailDate || '').localeCompare(b.emailDate || ''); }), today = todayStr();
+    el('rtWaiting').innerHTML = '<h2 class="card-title">Waiting to arrive <span style="font-size:13px; font-weight:400; color:var(--ink);">(' + open.length + ')</span></h2>' + (open.length ? '<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Order</th><th>Items</th><th>Reference</th><th>Seller\'s email</th><th class="num">Waiting</th><th></th></tr></thead><tbody>' +
+      open.map(function (n) {
+        var days = daysBetween(n.emailDate || today, today), late = days >= WAIT_LIMIT_DAYS;
+        var items = (n.lines || []).filter(function (l) { return noticeRemaining(n, l.sku) > 0; }).map(function (l) { return noticeRemaining(n, l.sku) + ' × ' + escapeHtml(l.name); }).join('<br>');
+        var armedDel = rtArm === 'del:' + n.id, armedClose = rtArm === 'close:' + n.id;
+        return '<tr' + (late ? ' class="late-row"' : '') + '><td>' + escapeHtml(n.channel) + '</td><td><b>' + escapeHtml(n.orderId) + '</b><div class="prod-sku">' + fmtDay(n.orderDate) + '</div></td><td>' + items + '</td><td>' + escapeHtml(n.reference || '—') + '</td><td>' + fmtDay(n.emailDate) + '</td><td class="num"><b>' + days + '</b> day' + (days === 1 ? '' : 's') + (late ? '<div class="prod-sku">over ' + WAIT_LIMIT_DAYS + ' days</div>' : '') + '</td>' +
+          '<td style="text-align:right; white-space:nowrap;"><button type="button" class="btn btn-sm btn-primary need-edit" data-recv="' + escapeHtml(n.id) + '">Receive</button> <button type="button" class="btn btn-sm need-owner" data-closenotice="' + escapeHtml(n.id) + '" title="The parcel never arrived: take it off the list">' + (armedClose ? 'Click again to close' : 'Close — not received') + '</button> <button type="button" class="btn btn-sm need-owner" data-delnotice="' + escapeHtml(n.id) + '">' + (armedDel ? 'Click again to delete' : 'Delete') + '</button></td></tr>';
+      }).join('') + '</tbody></table></div>' : '<p style="margin:0; color:var(--ink);">Nothing is waiting. When a seller emails that a parcel is coming back, record it here.</p>');
+    var dm = damagedRows(), tv = dm.reduce(function (s, r) { return s + r.value; }, 0);
+    el('rtDamaged').innerHTML = '<h2 class="card-title">Damaged returns — for claims <span style="font-size:13px; font-weight:400; color:var(--ink);">(not counted as stock)</span></h2>' + (dm.length ? '<div class="table-scroll"><table><thead><tr><th>Return date</th><th>Seller</th><th>Order</th><th>Return ref.</th><th>Item</th><th class="num">Qty</th><th class="num">Value to claim</th></tr></thead><tbody>' +
+      dm.map(function (r) { return '<tr><td>' + fmtDay(r.date) + '</td><td>' + escapeHtml(r.channel) + '</td><td>' + escapeHtml(r.orderId) + '</td><td>' + escapeHtml(r.ref || '—') + '</td><td>' + escapeHtml(r.name) + '<div class="prod-sku">' + escapeHtml(r.sku) + '</div></td><td class="num">' + r.qty + '</td><td class="num">' + fmtCost(r.value) + '</td></tr>'; }).join('') +
+      '</tbody><tfoot><tr><th colspan="5" style="text-align:left;">Total</th><th class="num">' + dm.reduce(function (s, r) { return s + r.qty; }, 0) + '</th><th class="num">' + fmtCost(tv) + '</th></tr></tfoot></table></div>' : '<p style="margin:0; color:var(--ink);">No damaged returns yet.</p>');
+    Array.prototype.forEach.call(el('rtWaiting').querySelectorAll('[data-recv]'), function (b) { b.addEventListener('click', function () { startReceive(b.getAttribute('data-recv')); }); });
+    function armed(kind, id, again) {
+      var key = kind + ':' + id;
+      if (rtArm !== key) { rtArm = key; renderReturnsView(); setTimeout(function () { if (rtArm === key) { rtArm = null; if (activeView === 'returns') renderReturnsView(); } }, 4000); return false; }
+      rtArm = null; return true;
+    }
+    Array.prototype.forEach.call(el('rtWaiting').querySelectorAll('[data-delnotice]'), function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-delnotice'); if (!armed('del', id)) return;
+        dbNS.doc('expected/' + id).delete().then(function () { showToast('Expected return deleted'); }).catch(function () { showToast('Only the owner can delete an expected return'); });
+      });
+    });
+    Array.prototype.forEach.call(el('rtWaiting').querySelectorAll('[data-closenotice]'), function (b) {
+      b.addEventListener('click', function () {
+        var id = b.getAttribute('data-closenotice'); if (!armed('close', id)) return;
+        dbNS.doc('expected/' + id).update({ status: 'closed', closedReason: 'not received', closedAt: nowIso() }).then(function () { showToast('Closed — marked as not received'); }).catch(function () { showToast('Could not close it — please try again'); });
+      });
+    });
+    updateRetBadge();
+  }
+  function openNoticeForm() {
+    var chans = []; ordersList.forEach(function (o) { if (chans.indexOf(o.channel) === -1) chans.push(o.channel); }); chans.sort();
+    el('rtChannel').innerHTML = optHtml('', chans.length ? 'Choose the seller…' : 'No orders recorded yet', true) + chans.map(function (c) { return optHtml(c, c, false); }).join('');
+    el('rtOrder').innerHTML = optHtml('', 'Choose the seller first', true); el('rtOrder').disabled = true; el('rtLines').innerHTML = '';
+    el('rtRef').value = ''; el('rtDate').value = todayStr(); el('rtDate').max = todayStr(); el('rtError').classList.remove('show'); el('rtForm').hidden = false;
+  }
+  function fillNoticeOrders() {
+    var ch = el('rtChannel').value, list = ordersList.filter(function (o) { return o.channel === ch && (o.lines || []).some(function (l) { return lineCan(l) - onTheWayFor(o.id, l.sku) > 0; }); }).sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+    el('rtOrder').innerHTML = optHtml('', ch ? (list.length ? 'Choose an order…' : 'Nothing left to expect for ' + ch) : 'Choose the seller first', true) + list.map(function (o) {
+      var hay = qNorm([o.orderId, o.date, fmtDay(o.date), (o.lines || []).map(function (l) { return l.sku + ' ' + l.name; }).join(' ')].join(' '));
+      return '<option value="' + escapeHtml(o.id) + '" data-search="' + escapeHtml(hay) + '">' + escapeHtml(o.orderId + ' · ' + fmtDay(o.date)) + '</option>';
+    }).join('');
+    el('rtOrder').disabled = !ch; el('rtLines').innerHTML = '';
+  }
+  function fillNoticeLines() {
+    var o = ordersList.filter(function (x) { return x.id === el('rtOrder').value; })[0];
+    if (!o) { el('rtLines').innerHTML = ''; return; }
+    el('rtDate').min = o.date || '';
+    el('rtLines').innerHTML = '<div class="field"><label>How many of each are coming back?</label>' + (o.lines || []).map(function (l, i) {
+      var avail = lineCan(l) - onTheWayFor(o.id, l.sku);
+      return '<div class="ret-row"><div class="rr-head"><b style="color:var(--ink-strong);">' + escapeHtml(l.name) + (l.kit ? '<span class="kit-tag">Kit</span>' : '') + '</b><span class="prod-sku">' + escapeHtml(l.sku) + '</span></div><div class="rr-meta">Sent ' + l.qty + ' · Returned ' + lineDone(l) + ' · Already expected ' + onTheWayFor(o.id, l.sku) + ' · <b>Can still be expected: ' + Math.max(0, avail) + '</b></div>' +
+        (avail > 0 ? '<div class="rr-inputs"><label>Expected<input type="number" min="0" step="1" data-nl="' + i + '" data-max="' + avail + '" value="' + avail + '"></label></div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function saveNotice() {
+    var err = el('rtError'); function fail(m) { err.textContent = m; err.classList.add('show'); }
+    err.classList.remove('show');
+    var ch = el('rtChannel').value, o = ordersList.filter(function (x) { return x.id === el('rtOrder').value; })[0];
+    if (!ch || !o) { fail('Choose the seller and the order.'); return; }
+    var lines = [], bad = '';
+    Array.prototype.forEach.call(el('rtLines').querySelectorAll('input[data-nl]'), function (inp) {
+      var q = toInt(inp.value), max = Number(inp.getAttribute('data-max')), l = o.lines[Number(inp.getAttribute('data-nl'))];
+      if (isNaN(q)) bad = 'Whole numbers only.'; else if (q > max) bad = 'Only ' + max + ' of ' + l.name + ' can still be expected from this order.';
+      else if (q > 0) lines.push({ sku: l.sku, productId: l.productId, name: l.name, kit: !!l.kit, qty: q });
+    });
+    if (bad) { fail(bad); return; }
+    if (!lines.length) { fail('Enter how many are coming back — at least one item.'); return; }
+    var d = el('rtDate').value || todayStr();
+    if (d > todayStr()) { fail('The email date can\'t be in the future.'); return; }
+    if (o.date && d < o.date) { fail('The email date can\'t be before the dispatch date (' + fmtDay(o.date) + ').'); return; }
+    dbNS.collection('expected').add({ channel: ch, orderId: o.orderId, orderDocId: o.id, orderDate: o.date, lines: lines, reference: el('rtRef').value.trim(), emailDate: d, createdAt: nowIso(), createdBy: me.name || '', status: 'open', received: {} })
+      .then(function () { el('rtForm').hidden = true; showToast('Expected return recorded — ' + ch + ', order ' + o.orderId); })
+      .catch(function (e) { fail(isWritePermissionError(e) ? 'You don\'t have permission to record this.' : 'Could not save — please try again.'); });
+  }
+  function startReceive(id) {
+    var n = expectedList.filter(function (x) { return x.id === id; })[0], o = n ? ordersList.filter(function (x) { return x.id === n.orderDocId; })[0] : null;
+    if (!n || !canWriteStock()) return;
+    if (!o) { showToast('That order is no longer in the list.'); return; }
+    preserveReturnState = true; showView('orders'); setDispatchType('return');
+    var chSel = el('fDispatchChannel');
+    if (Array.prototype.some.call(chSel.options, function (op) { return op.value === n.channel; })) chSel.value = n.channel;
+    else { chSel.value = 'Other'; el('dispatchOtherWrap').style.display = 'block'; el('fDispatchOther').value = n.channel; }
+    retState = { orderDocId: o.id, earlier: false, lines: linesFromOrder(o), noticeId: id };
+    retState.lines.forEach(function (ln) { var r = noticeRemaining(n, ln.sku); if (r > 0) { if (ln.kit) ln.qty = String(Math.min(r, ln.can)); else ln.good = String(Math.min(r, ln.can)); } });
+    el('fOrderId').value = n.reference || '';
+    renderReturnPanel(); focusScan();
+  }
+
+  // ---- Excel ----
+  function saveXlsx(filename, sheets) {
+    if (typeof XLSX === 'undefined') { saveFile(filename.replace(/\.xlsx$/, '.csv'), '\ufeff' + sheets[0].rows.map(function (r) { return r.map(csvCell).join(','); }).join('\n')); return; }
+    var wb = XLSX.utils.book_new();
+    sheets.forEach(function (s) {
+      var ws = XLSX.utils.aoa_to_sheet(s.rows); ws['!cols'] = (s.widths || []).map(function (w) { return { wch: w }; });
+      (s.money || []).forEach(function (c) { for (var r = 2; r <= s.rows.length; r++) { var cell = ws[XLSX.utils.encode_cell({ c: c, r: r - 1 })]; if (cell && typeof cell.v === 'number') cell.z = '#,##0.00'; } });
+      XLSX.utils.book_append_sheet(wb, ws, s.name);
+    });
+    saveFile(filename, new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  }
+  function exportReturns() {
+    if (!returnsList.length) { showToast('No returns have been recorded yet'); return; }
+    var orderOf = function (r) { return ordersList.filter(function (o) { return o.id === r.orderDocId; })[0]; };
+    var lineRows = [['Return date', 'Seller', 'Order ID', 'Return reference', 'SKU', 'Product', 'Good qty', 'Damaged qty', 'Sent in order', 'Dispatch date', 'Good value (₹)', 'Damaged value (₹)', 'Kit items', 'Notes']];
+    returnsList.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''); }).forEach(function (r) {
+      var o = orderOf(r);
+      (r.lines || []).forEach(function (l) {
+        var ol = o ? (o.lines || []).filter(function (x) { return x.sku === l.sku; })[0] : null;
+        lineRows.push([r.date, r.channel, r.orderId, r.returnRef || '', l.sku, l.name, Number(l.good) || 0, Number(l.damaged) || 0, ol ? Number(ol.qty) || 0 : '', r.dispatchDate || '', roundMoney(l.goodValue), roundMoney(l.damagedValue),
+          l.kit ? (l.comps || []).map(function (c) { return c.name + ': ' + (c.cond === 'good' ? 'good' : c.cond === 'damaged' ? 'damaged' : 'not received'); }).join('; ') : '', r.notes || '']);
+      });
+    });
+    var sumRows = [['Seller', 'Order ID', 'Dispatch date', 'SKU', 'Product', 'Sent', 'Returned good', 'Returned damaged', 'Still to come back', 'On the way']];
+    ordersList.slice().sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); }).forEach(function (o) {
+      (o.lines || []).forEach(function (l) { sumRows.push([o.channel, o.orderId, o.date, l.sku, l.name, Number(l.qty) || 0, Number(l.good) || 0, Number(l.damaged) || 0, lineCan(l), onTheWayFor(o.id, l.sku)]); });
+    });
+    var dm = damagedRows(), dmRows = [['Return date', 'Seller', 'Order ID', 'Return reference', 'SKU', 'Product', 'Damaged qty', 'Unit cost (₹)', 'Value to claim (₹)']];
+    dm.forEach(function (r) { dmRows.push([r.date, r.channel, r.orderId, r.ref, r.sku, r.name, r.qty, roundMoney(r.unit), roundMoney(r.value)]); });
+    if (dm.length) dmRows.push(['', '', '', '', '', 'Total', dm.reduce(function (s, r) { return s + r.qty; }, 0), '', roundMoney(dm.reduce(function (s, r) { return s + r.value; }, 0))]);
+    saveXlsx('aariro-returns-' + todayStr() + '.xlsx', [
+      { name: 'Returns', rows: lineRows, widths: [12, 14, 16, 16, 22, 50, 10, 12, 12, 13, 14, 16, 40, 30], money: [10, 11] },
+      { name: 'Order summary', rows: sumRows, widths: [14, 16, 13, 22, 50, 8, 14, 16, 18, 10] },
+      { name: 'Damaged (claims)', rows: dmRows, widths: [12, 14, 16, 16, 22, 50, 12, 14, 18], money: [7, 8] }]);
+  }
+  function exportWaitingList() {
+    var open = expectedList.filter(noticeOpen), today = todayStr();
+    if (!open.length) { showToast('Nothing is waiting to arrive'); return; }
+    var rows = [['Seller', 'Order ID', 'Dispatch date', 'Seller\'s email date', 'Reference / tracking', 'SKU', 'Product', 'Expected qty', 'Days waiting']];
+    open.sort(function (a, b) { return (a.emailDate || '').localeCompare(b.emailDate || ''); }).forEach(function (n) {
+      (n.lines || []).forEach(function (l) { var r = noticeRemaining(n, l.sku); if (r > 0) rows.push([n.channel, n.orderId, n.orderDate || '', n.emailDate || '', n.reference || '', l.sku, l.name, r, daysBetween(n.emailDate || today, today)]); });
+    });
+    saveXlsx('aariro-waiting-returns-' + today + '.xlsx', [{ name: 'Waiting to arrive', rows: rows, widths: [14, 16, 13, 16, 20, 22, 50, 12, 12] }]);
+  }
+  el('logExportReturnsBtn').addEventListener('click', exportReturns);
+
+  // =====================================================================================
+  //  ₹ in the device's own system font (only the sign; the digits keep the tool's font)
+  // =====================================================================================
+  function wrapRupees(root) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, { acceptNode: function (n) {
+      if (n.nodeValue.indexOf('₹') === -1) return NodeFilter.FILTER_REJECT;
+      var p = n.parentNode; if (!p || p.nodeType !== 1) return NodeFilter.FILTER_REJECT;
+      var t = p.tagName; if (t === 'SCRIPT' || t === 'STYLE' || t === 'TEXTAREA' || t === 'OPTION' || t === 'TITLE' || (p.classList && p.classList.contains('rs'))) return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT; } });
+    var nodes = []; while (walker.nextNode()) nodes.push(walker.currentNode);
+    nodes.forEach(function (n) {
+      var parts = n.nodeValue.split('₹'), frag = document.createDocumentFragment();
+      parts.forEach(function (txt, i) { if (i > 0) { var s = document.createElement('span'); s.className = 'rs'; s.textContent = '₹'; frag.appendChild(s); } if (txt) frag.appendChild(document.createTextNode(txt)); });
+      n.parentNode.replaceChild(frag, n);
+    });
+  }
+  var rupTimer = null, rupObs = new MutationObserver(function () {
+    if (rupTimer) return;
+    rupTimer = requestAnimationFrame(function () { rupTimer = null; rupObs.disconnect(); wrapRupees(document.body); rupObs.observe(document.body, { childList: true, subtree: true, characterData: true }); });
+  });
+  wrapRupees(document.body); rupObs.observe(document.body, { childList: true, subtree: true, characterData: true });
 
   // =====================================================================================
   //  Manage access (owner only): who can sign in, and as what
@@ -3403,6 +3969,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     labelSel = {}; ids.forEach(function (id) { labelSel[id] = 1; }); labelMode = 'ticked'; showView('labels');
   });
 
+  updateRetBadge();
   orderRows = [newOrderRow('')];
   setDispatchType('dispatch');
   if (window.claude && typeof window.claude.use === 'function') startDb(); else computeRole();
