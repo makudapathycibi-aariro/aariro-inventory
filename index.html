@@ -435,6 +435,7 @@
             <button class="menu-item need-edit" id="menuDownloadSheet" type="button">Download SKU sheet<span class="menu-sub">Every active SKU, quantity blank</span></button>
             <button class="menu-item need-edit" id="menuUploadSheet" type="button">Upload a filled sheet<span class="menu-sub">Adds the quantities to stock</span></button>
             <button class="menu-item" id="menuExportInventory" type="button">Export current stock<span class="menu-sub">Download the stock list as CSV</span></button>
+            <button class="menu-item" id="menuExportLow" type="button">Export low &amp; out of stock (Excel)<span class="menu-sub">What to reorder, with shortfall</span></button>
             <button class="menu-item" id="menuExportLots" type="button">Export stock by lot (Excel)<span class="menu-sub">Every lot with its cost price</span></button>
           </div>
         </div>
@@ -2257,6 +2258,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   document.getElementById('menuRestock').addEventListener('click', function () { openDispatch(null, 'restock'); });
   document.getElementById('menuExportInventory').addEventListener('click', exportInventoryCsv);
   document.getElementById('menuExportLots').addEventListener('click', exportStockByLot);
+  document.getElementById('menuExportLow').addEventListener('click', exportLowStock);
   document.getElementById('menuDownloadSheet').addEventListener('click', function () { downloadSkuSheet(); });
   document.getElementById('menuUploadSheet').addEventListener('click', openBulkRestock);
 
@@ -3130,11 +3132,15 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     el('lbPdf').disabled = t.labels === 0;
   }
   function selectedLabelProducts() { return products.filter(function (p) { return labelSel[p.id] != null && !isRetired(p); }); }
+  function labelTitle(p) {
+    var n = String(p.name || ''), t = n.replace(/\s*\([^()]*\)\s*$/, '').trim();
+    return t || n;
+  }
   function labelHtml(p) {
     var kit = isKitProduct(p);
     var sub = (libName('sizes', p.sizeCode) || '') + (p.pack ? ' · Pack of ' + parseInt(p.pack, 10) : '');
     return '<div style="width:400px; max-width:100%; box-sizing:border-box; min-height:240px; gap:12px; background:#FFFFFF; border:1px solid var(--blush-mid); border-radius:6px; padding:14px 16px; display:flex; flex-direction:column; justify-content:space-between;">' +
-      '<div><div style="font-size:14px; font-weight:700; line-height:1.25; color:#262626;">' + escapeHtml(p.name) + '</div>' + (p.sizeCode ? '<div style="margin-top:3px; font-size:11.5px; color:#4A4A4A;">' + escapeHtml(sub) + '</div>' : '') + (kit ? '<div style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#4A4A4A;">Kit · ' + p.kitComponents.length + ' item' + (p.kitComponents.length === 1 ? '' : 's') + '</div>' : '') + '</div>' +
+      '<div><div style="font-size:14px; font-weight:700; line-height:1.25; color:#262626;">' + escapeHtml(labelTitle(p)) + '</div>' + (p.sizeCode ? '<div style="margin-top:3px; font-size:11.5px; color:#4A4A4A;">' + escapeHtml(sub) + '</div>' : '') + (kit ? '<div style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:#4A4A4A;">Kit · ' + p.kitComponents.length + ' item' + (p.kitComponents.length === 1 ? '' : 's') + '</div>' : '') + '</div>' +
       '<div><svg class="lb-svg" data-sku="' + escapeHtml(p.sku) + '" style="display:block; margin:0 auto; max-width:100%;"></svg><div style="margin-top:4px; text-align:center; font-size:12px; letter-spacing:0.1em; color:#262626;">' + escapeHtml(p.sku) + '</div></div></div>';
   }
   function renderLabelPreview() {
@@ -3152,7 +3158,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (logoData) { try { logoW = 9; doc.addImage(logoData, 'PNG', w - m - logoW, m, logoW, logoW * 524 / 1224); } catch (e) { logoW = 0; } }
     var nameW = w - 2 * m - (logoW ? logoW + 1.5 : 0);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(Math.max(5, Math.min(7, h * 0.23)));
-    var lines = doc.splitTextToSize(String(p.name || ''), nameW).slice(0, 2);
+    var lines = doc.splitTextToSize(labelTitle(p), nameW).slice(0, 2);
     var y = m + 2.4;
     lines.forEach(function (ln) { doc.text(ln, m, y); y += 2.7; });
     doc.setFont('helvetica', 'normal'); doc.setFontSize(Math.max(4, Math.min(5.5, h * 0.17)));
@@ -3253,6 +3259,31 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   el('detailsClose').addEventListener('click', closeDetails);
   el('detailsDone').addEventListener('click', closeDetails);
   detailsOverlay.addEventListener('click', function (e) { if (e.target === detailsOverlay) closeDetails(); });
+
+  function exportLowStock() {
+    var rank = { out: 0, low: 1 };
+    var list = activeProducts().filter(function (p) { return !isKitProduct(p) && statusOf(p) !== 'ok'; }).sort(function (a, b) {
+      var d = rank[statusOf(a)] - rank[statusOf(b)];
+      return d || (a.sku || '').localeCompare(b.sku || '');
+    });
+    if (!list.length) { showToast('Nothing is low or out of stock right now'); return; }
+    var rows = [['Status', 'SKU', 'Product', 'Category', 'Quantity', 'Reorder level', 'Shortfall', 'Latest cost price (₹)']];
+    list.forEach(function (p) {
+      var q = effectiveQty(p), r = Number(p.reorderLevel) || 0;
+      rows.push([statusOf(p) === 'out' ? 'Out of stock' : 'Low', p.sku, p.name, p.category || '', q, r, Math.max(0, r - q), roundMoney(p.price)]);
+    });
+    var day = todayStr();
+    if (typeof XLSX === 'undefined') {
+      saveFile('aariro-low-and-out-of-stock-' + day + '.csv', '\ufeff' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\n'));
+      return;
+    }
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 56 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 20 }];
+    for (var r = 2; r <= rows.length; r++) { var c = ws[XLSX.utils.encode_cell({ c: 7, r: r - 1 })]; if (c && typeof c.v === 'number') c.z = '#,##0.00'; }
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Low & out of stock');
+    var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    saveFile('aariro-low-and-out-of-stock-' + day + '.xlsx', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+  }
 
   function exportStockByLot() {
     var list = activeProducts().filter(function (p) { return !isKitProduct(p); }).sort(function (a, b) { return (a.sku || '').localeCompare(b.sku || ''); });
