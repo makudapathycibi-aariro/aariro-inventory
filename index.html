@@ -435,6 +435,7 @@
             <button class="menu-item need-edit" id="menuDownloadSheet" type="button">Download SKU sheet<span class="menu-sub">Every active SKU, quantity blank</span></button>
             <button class="menu-item need-edit" id="menuUploadSheet" type="button">Upload a filled sheet<span class="menu-sub">Adds the quantities to stock</span></button>
             <button class="menu-item" id="menuExportInventory" type="button">Export current stock<span class="menu-sub">Download the stock list as CSV</span></button>
+            <button class="menu-item need-owner" id="menuResetStock" type="button">Reset all stock to zero<span class="menu-sub">Owner only · keeps SKUs and kits</span></button>
             <button class="menu-item" id="menuExportLow" type="button">Export low &amp; out of stock (Excel)<span class="menu-sub">What to reorder, with shortfall</span></button>
             <button class="menu-item" id="menuExportLots" type="button">Export stock by lot (Excel)<span class="menu-sub">Every lot with its cost price</span></button>
           </div>
@@ -682,6 +683,24 @@
   </div>
 </div>
 
+<!-- Reset stock modal -->
+<div class="overlay" id="resetOverlay">
+  <div class="modal">
+    <div class="modal-head"><h2>Reset all stock to zero</h2><button class="close-x" id="resetClose">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-error" id="resetError"></div>
+      <div class="helptext" style="margin:0 0 10px;"><b>This cannot be undone.</b> It sets every SKU's quantity, stock lots and cost price to zero and deletes the activity log, orders, returns and expected returns.</div>
+      <div class="helptext" style="margin:0 0 12px;"><b>Kept:</b> all SKUs, kits, retired status, reorder levels and the category / design / size lists.</div>
+      <div class="field"><button class="btn" id="resetBackup" type="button">Download a copy of current stock first</button></div>
+      <div class="field"><label for="resetWord">Type RESET to confirm</label><input type="text" id="resetWord" autocomplete="off"></div>
+      <div class="modal-foot">
+        <button class="btn" id="resetCancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="resetConfirm" type="button" disabled>Reset everything</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Bulk restock modal -->
 <div class="overlay" id="bulkRestockOverlay">
   <div class="modal wide">
@@ -695,7 +714,7 @@
       <div class="or-divider">or paste instead</div>
       <div class="field">
         <label for="bulkRestockPaste">Paste your sheet</label>
-        <div class="helptext" style="margin:0 0 8px;">Use the SKU sheet you downloaded: fill in <b>quantity</b> for what came in and, if the cost changed, <b>price</b> for that lot (blank = reuse the latest price). Rows match by <b>sku</b>. A SKU that isn't in the SKU list is skipped and listed below. For a kit SKU, the quantity is added to each of its components.</div>
+        <div class="helptext" style="margin:0 0 8px;">Use the SKU sheet you downloaded: fill in <b>quantity</b> for what came in and, if the cost changed, <b>price</b> for that lot (blank = reuse the latest price). Rows match by <b>sku</b>, and each row's <b>name</b> and <b>category</b> must also agree with the tool exactly. If any row doesn't, nothing is imported. A SKU that isn't in the SKU list is skipped and listed below. For a kit SKU, the quantity is added to each of its components.</div>
         <textarea class="csv-paste" id="bulkRestockPaste" placeholder="Paste your sheet here"></textarea>
       </div>
       <div class="csv-preview" id="bulkRestockPreview"></div>
@@ -2259,6 +2278,48 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   document.getElementById('menuExportInventory').addEventListener('click', exportInventoryCsv);
   document.getElementById('menuExportLots').addEventListener('click', exportStockByLot);
   document.getElementById('menuExportLow').addEventListener('click', exportLowStock);
+  (function () {
+    var ov = document.getElementById('resetOverlay'), word = document.getElementById('resetWord'), go = document.getElementById('resetConfirm'), err = document.getElementById('resetError');
+    function close() { ov.classList.remove('show'); }
+    document.getElementById('menuResetStock').addEventListener('click', function () {
+      if (me.role !== 'owner') { showToast('Only the owner can reset stock'); return; }
+      word.value = ''; go.disabled = true; go.textContent = 'Reset everything'; err.classList.remove('show'); ov.classList.add('show');
+    });
+    document.getElementById('resetClose').addEventListener('click', close);
+    document.getElementById('resetCancel').addEventListener('click', close);
+    ov.addEventListener('click', function (e) { if (e.target === ov) close(); });
+    document.getElementById('resetBackup').addEventListener('click', exportStockByLot);
+    word.addEventListener('input', function () { go.disabled = word.value.trim() !== 'RESET'; });
+    function allDocs(name, fallback) {
+      var col = dbNS.collection(name);
+      if (col && typeof col.get === 'function') return col.get().then(function (snap) { return snap.docs.map(function (d) { return d.id; }); });
+      return Promise.resolve(fallback.map(function (x) { return x.id; }));
+    }
+    function inBatches(items, fn) {
+      var chain = Promise.resolve();
+      for (var i = 0; i < items.length; i += 20) (function (part) { chain = chain.then(function () { return Promise.all(part.map(fn)); }); })(items.slice(i, i + 20));
+      return chain;
+    }
+    go.addEventListener('click', function () {
+      if (me.role !== 'owner' || !dbNS || word.value.trim() !== 'RESET') return;
+      go.disabled = true; go.textContent = 'Resetting…'; err.classList.remove('show');
+      var now = new Date().toISOString(), names = [['dispatches', dispatches], ['orders', ordersList], ['returns', returnsList], ['expected', expectedList]];
+      var chain = Promise.resolve();
+      names.forEach(function (n) {
+        chain = chain.then(function () { return allDocs(n[0], n[1]); }).then(function (ids) { return inBatches(ids, function (id) { return dbNS.collection(n[0]).doc(id).delete(); }); });
+      });
+      chain.then(function () {
+        var dirty = products.filter(function (p) { return (Number(p.quantity) || 0) !== 0 || (p.lots && p.lots.length) || (Number(p.price) || 0) !== 0; });
+        return inBatches(dirty, function (p) { return dbNS.collection('products').doc(p.id).update({ quantity: 0, lots: [], price: 0, updatedAt: now }); });
+      }).then(function () {
+        close(); go.textContent = 'Reset everything';
+        showToast('All stock reset to zero. SKUs and kits were kept.');
+      }).catch(function () {
+        go.disabled = false; go.textContent = 'Reset everything';
+        err.textContent = 'The reset stopped part-way. Run it again to finish; it is safe to repeat.'; err.classList.add('show');
+      });
+    });
+  })();
   document.getElementById('menuDownloadSheet').addEventListener('click', function () { downloadSkuSheet(); });
   document.getElementById('menuUploadSheet').addEventListener('click', openBulkRestock);
 
@@ -2325,21 +2386,47 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
   function findProductForRow(row) {
     var sku = (row.sku || '').trim().toLowerCase();
-    var name = (row.name || row['product name'] || row['product'] || '').trim().toLowerCase();
     if (sku) {
       var bySku = products.filter(function (p) { return (p.sku || '').trim().toLowerCase() === sku; })[0];
       if (bySku) return bySku;
     }
-    if (name) {
-      var byName = products.filter(function (p) { return (p.name || '').trim().toLowerCase() === name; })[0];
-      if (byName) return byName;
-    }
     return null;
+  }
+  function normTxt(v) { return String(v == null ? '' : v).replace(/\s+/g, ' ').trim().toLowerCase(); }
+  function sheetHeaders(text) {
+    var first = text.split(/\r\n|\n|\r/).filter(function (l) { return l.trim() !== ''; })[0];
+    return first ? splitCsvLine(first).map(function (h) { return h.trim().toLowerCase(); }) : [];
   }
 
   function parseBulkRestock(text) {
-    var rows = csvToRows(text).filter(function (row) {
-      return (row.sku || row.name || row['product name'] || row['product']) && (row.quantity || row.qty);
+    var allRows = csvToRows(text);
+    var headerError = '', mismatches = [];
+    if (text.trim() !== '') {
+      var hs = sheetHeaders(text), missingH = [];
+      ['name', 'sku', 'category'].forEach(function (h) { if (hs.indexOf(h) === -1) missingH.push(h); });
+      if (hs.indexOf('quantity') === -1 && hs.indexOf('qty') === -1) missingH.push('quantity');
+      if (missingH.length) headerError = 'The sheet is missing the column' + (missingH.length === 1 ? '' : 's') + ': ' + missingH.join(', ') + '. Use the SKU sheet downloaded from this tool (name, sku, category, quantity …).';
+    }
+    if (!headerError) {
+      allRows.forEach(function (row, i) {
+        var sku = (row.sku || '').trim(), nm = (row.name || '').trim(), cat = (row.category || '').trim();
+        if (!sku && !nm && !cat) return;
+        var rowNo = i + 2;
+        if (!sku) { mismatches.push('Row ' + rowNo + ': there is no SKU (name "' + nm + '")'); return; }
+        var prod = findProductForRow(row);
+        if (!prod) {
+          var other = nm && products.filter(function (p) { return normTxt(p.name) === normTxt(nm); })[0];
+          if (other) mismatches.push('Row ' + rowNo + ': SKU ' + sku + ' is not a SKU in the tool, but the name "' + nm + '" belongs to ' + other.sku);
+          return;
+        }
+        var bad = [];
+        if (normTxt(row.name) !== normTxt(prod.name)) bad.push('name is "' + nm + '" but the tool has "' + (prod.name || '') + '"');
+        if (normTxt(row.category) !== normTxt(prod.category)) bad.push('category is "' + cat + '" but the tool has "' + (prod.category || '') + '"');
+        if (bad.length) mismatches.push('Row ' + rowNo + ': SKU ' + sku + ' — ' + bad.join('; '));
+      });
+    }
+    var rows = (headerError || mismatches.length) ? [] : allRows.filter(function (row) {
+      return (row.sku || row.name) && (row.quantity || row.qty);
     });
     var matched = [];
     var unmatchedLabels = [];
@@ -2371,10 +2458,10 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
           cost: (function () { var t = String(row.price || row.cost || row['cost price'] || row['unit cost'] || '').trim(); return t === '' ? null : (Number(t) || 0); })()
         });
       } else if (!product) {
-        unmatchedLabels.push(row.sku || row.name || row['product name'] || row['product']);
+        unmatchedLabels.push(row.sku || row.name);
       }
     });
-    return { matched: matched, unmatchedLabels: unmatchedLabels, invalidLabels: invalidLabels, kitWarnings: kitWarnings, kitRows: kitRows };
+    return { matched: matched, unmatchedLabels: unmatchedLabels, invalidLabels: invalidLabels, kitWarnings: kitWarnings, kitRows: kitRows, headerError: headerError, mismatches: mismatches };
   }
 
   function updateBulkRestockPreview() {
@@ -2385,6 +2472,17 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var unmatchedBox = document.getElementById('bulkRestockUnmatched');
     var confirmBtn = document.getElementById('bulkRestockConfirm');
 
+    if (result.headerError || result.mismatches.length) {
+      bulkRestockMatched = [];
+      preview.innerHTML = '<b style="color:#B3261E;">Nothing was imported — fix the sheet and upload it again.</b>';
+      var shown = result.mismatches.slice(0, 12).map(escapeHtml);
+      if (result.mismatches.length > 12) shown.push('… and ' + (result.mismatches.length - 12) + ' more rows');
+      unmatchedBox.style.display = 'block';
+      unmatchedBox.innerHTML = result.headerError ? escapeHtml(result.headerError) : ('These rows do not match the tool (' + result.mismatches.length + '). The name, SKU and category in each row must all agree, so the sheet may have been re-sorted or shifted:<br>' + shown.join('<br>'));
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Add to stock';
+      return;
+    }
     if (!bulkRestockMatched.length && !bulkRestockUnmatchedCount && !result.kitWarnings.length && !result.invalidLabels.length) {
       preview.textContent = '';
       unmatchedBox.style.display = 'none';
