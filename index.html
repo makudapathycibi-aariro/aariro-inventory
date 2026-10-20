@@ -642,7 +642,8 @@
         </div>
         <div class="field">
           <label for="fReorder">Reorder at</label>
-          <input type="number" id="fReorder" min="0" step="1" placeholder="0">
+          <input type="number" id="fReorder" min="0" step="1" placeholder="Category">
+          <div class="helptext" id="fReorderHelp" style="margin:4px 0 0;"></div>
         </div>
       </div>
       <div class="field-row">
@@ -690,7 +691,7 @@
     <div class="modal-body">
       <div class="form-error" id="resetError"></div>
       <div class="helptext" style="margin:0 0 10px;"><b>This cannot be undone.</b> It sets every SKU's quantity, stock lots and cost price to zero and deletes the activity log, orders, returns and expected returns.</div>
-      <div class="helptext" style="margin:0 0 12px;"><b>Kept:</b> all SKUs, kits, retired status, reorder levels and the category / design / size lists.</div>
+      <div class="helptext" style="margin:0 0 12px;"><b>Kept:</b> all SKUs, kits, retired status, reorder levels, category minimums and the category / design / size lists.</div>
       <div class="field"><button class="btn" id="resetBackup" type="button">Download a copy of current stock first</button></div>
       <div class="field"><label for="resetWord">Type RESET to confirm</label><input type="text" id="resetWord" autocomplete="off"></div>
       <div class="modal-foot">
@@ -903,6 +904,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   var canWrite = true;             // optimistic; corrected on first failed write
   var unsubscribe = null;
   var unsubscribeDispatches = null;
+  var catLevels = {};          // category code -> minimum stock (owner sets these)
+  var minimumsSeen = false, minimumsMigrated = false, productsLoaded = false, migratingNow = false;
   var libraries = { categories: [], designs: [], sizes: [] };   // code -> name lists used to build SKUs
   var retiredMap = {};       // productId -> retirement record (written only by the owner)
   var roleDocs = {};         // userId -> { role: 'manager' }
@@ -1104,12 +1107,57 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     return { moves: moves, blocked: blocked, short: short, missing: info.missing };
   }
 
-  function statusOf(p) {
-    var qty = effectiveQty(p);
-    var reorder = Number(p.reorderLevel) || 0;
-    if (qty <= 0) return 'out';
-    if (reorder > 0 && qty <= reorder) return 'low';
+  // ---------- minimum stock: category level, optional own level per item, kits follow their items ----------
+  function catCodeOf(p) { if (p.catCode) return p.catCode; var f = p.category ? libFindByName('categories', p.category) : null; return f ? f.code : ''; }
+  function hasOwnLevel(p) { return p.reorderLevel !== null && p.reorderLevel !== undefined && p.reorderLevel !== '' && !isNaN(Number(p.reorderLevel)); }
+  function catLevelOf(p) { var c = catCodeOf(p), v = c ? catLevels[c] : undefined; return (v === undefined || v === null || v === '' || isNaN(Number(v))) ? null : Number(v); }
+  function levelInfo(p) {
+    if (isKitProduct(p)) return { level: null, source: 'kit' };
+    if (hasOwnLevel(p)) return { level: Number(p.reorderLevel), source: 'custom' };
+    var cl = catLevelOf(p);
+    return cl !== null ? { level: cl, source: 'category' } : { level: 0, source: 'none' };
+  }
+  function effectiveReorder(p) { return levelInfo(p).level || 0; }
+  function itemStatus(p) {
+    var q = Number(p.quantity) || 0, lv = effectiveReorder(p);
+    if (q <= 0) return 'out';
+    if (lv > 0 && q <= lv) return 'low';
     return 'ok';
+  }
+  function compLabel(c) { return (c.name || '') + ' (' + (c.sku || '') + ')'; }
+  function statusInfo(p) {
+    if (!isKitProduct(p)) return { status: itemStatus(p), reason: '', limiting: [] };
+    var info = kitInfo(p);
+    if (!info.components.length) return { status: 'out', reason: 'none of its items are in the inventory', limiting: [] };
+    var count = info.count;
+    var lim = info.components.filter(function (c) { return Math.max(Number(c.quantity) || 0, 0) === count; });
+    if (count <= 0) return { status: 'out', reason: lim.map(function (c) { return compLabel(c) + ' is out of stock'; }).join('; '), limiting: lim };
+    var low = lim.filter(function (c) { return itemStatus(c) !== 'ok'; });
+    if (low.length) return { status: 'low', reason: low.map(function (c) { return compLabel(c) + ': ' + (Number(c.quantity) || 0) + ' left, minimum ' + effectiveReorder(c); }).join('; '), limiting: low };
+    return { status: 'ok', reason: '', limiting: lim };
+  }
+  function statusOf(p) { return statusInfo(p).status; }
+  function reorderCellHtml(p) {
+    if (isKitProduct(p)) return '<span style="color:var(--ink-faint);font-size:12px;">from its items</span>';
+    var li = levelInfo(p);
+    if (li.source === 'none') return '—';
+    return li.level + '<div style="color:var(--ink-faint);font-size:11px;">' + (li.source === 'custom' ? 'Custom' : 'Category') + '</div>';
+  }
+  function reorderText(p) {
+    if (isKitProduct(p)) { var si = statusInfo(p); return 'Low stock follows its items' + (si.status !== 'ok' ? ' · ' + (si.status === 'out' ? 'Can\'t make' : 'Low') + ' because ' + si.reason : ''); }
+    var li = levelInfo(p);
+    return li.source === 'none' ? 'Reorder level: not set' : 'Reorder at ' + li.level + ' (' + (li.source === 'custom' ? 'custom level' : 'category level') + ')';
+  }
+  function maybeMigrate() {
+    if (migratingNow || minimumsMigrated || !minimumsSeen || !productsLoaded || !dbNS || me.role !== 'owner') return;
+    migratingNow = true;
+    var now = nowIso();
+    var dirty = products.filter(function (p) { return p.reorderLevel !== null && p.reorderLevel !== undefined; });
+    var chain = Promise.resolve();
+    for (var i = 0; i < dirty.length; i += 20) (function (part) { chain = chain.then(function () { return Promise.all(part.map(function (p) { return dbNS.collection('products').doc(p.id).update({ reorderLevel: null }); })); }); })(dirty.slice(i, i + 20));
+    chain.then(function () { return dbNS.doc('config/minimums').set({ levels: catLevels, migrated: true, migratedAt: now }); })
+      .then(function () { minimumsMigrated = true; })
+      .catch(function () { migratingNow = false; });
   }
 
   var toastTimer = null;
@@ -1234,6 +1282,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       : kitRow
         ? (st === 'ok' ? '<span class="badge ok">Can make</span>' : st === 'low' ? '<span class="badge low">Low</span>' : '<span class="badge out">Can\'t make</span>')
         : (st === 'ok' ? '<span class="badge ok">In stock</span>' : st === 'low' ? '<span class="badge low">Low stock</span>' : '<span class="badge out">Out of stock</span>');
+    if (kitRow && !retired && st !== 'ok') badge += '<div style="color:var(--ink-faint);font-size:11.5px;margin-top:3px;max-width:260px;white-space:normal;">' + escapeHtml(statusInfo(p).reason) + '</div>';
     var qtyCell = kitRow
       ? '<div>' + kinfo.count + ' <span style="color:var(--ink-faint);font-size:12px;">kits</span></div>' +
         '<div style="color:var(--ink-faint);font-size:11.5px;">' +
@@ -1258,7 +1307,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         '<td><div class="prod-name">' + escapeHtml(p.name) + (kitRow ? '<span class="kit-tag">Kit</span>' : '') + '</div>' + (p.sku ? '<div class="prod-sku">' + escapeHtml(p.sku) + '</div>' : '') + retNote + '</td>' +
         '<td>' + escapeHtml(p.category || '\u2014') + '</td>' +
         '<td class="num">' + qtyCell + '</td>' +
-        '<td class="num">' + (p.reorderLevel != null && p.reorderLevel !== '' ? Number(p.reorderLevel) : '\u2014') + '</td>' +
+        '<td class="num">' + reorderCellHtml(p) + '</td>' +
         '<td class="num">' + (p.price ? fmtCurrency2(p.price) : '\u2014') + '</td>' +
         '<td class="num">' + (kitRow ? '\u2014' : fmtCurrency(value)) + '</td>' +
         '<td>' + badge + '</td>' +
@@ -1304,6 +1353,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       dbNS = ns;
       unsubscribe = dbNS.collection('products').onSnapshot(function (snap) {
         products = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
+        productsLoaded = true; maybeMigrate();
         refreshCategoryOptions();
         render();
       }, function (err) {
@@ -1315,6 +1365,13 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         renderLog();
         if (activeView === 'labels') renderLabels();
       }, function () { /* the log is supplementary; ignore transient errors */ });
+      dbNS.doc('config/minimums').onSnapshot(function (snap) {
+        var data = snap.exists ? (snap.data() || {}) : {};
+        catLevels = data.levels && typeof data.levels === 'object' ? data.levels : {};
+        minimumsSeen = true; minimumsMigrated = !!data.migrated;
+        sigs.lists = null; render(); if (typeof renderSkuViews === 'function') renderSkuViews();
+        maybeMigrate();
+      }, function () {});
       dbNS.doc('config/libraries').onSnapshot(function (snap) {
         var data = snap.exists ? (snap.data() || {}) : {};
         libraries = {
@@ -1362,6 +1419,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function computeRole() {
     var role = me.fbRole || 'viewer';
     me.role = role;
+    if (role === 'owner') setTimeout(maybeMigrate, 0);
     var cl = document.body.classList;
     cl.remove('role-viewer', 'role-editor', 'role-manager', 'role-owner');
     cl.add('role-' + role);
@@ -1393,7 +1451,13 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     document.getElementById('fCategory').value = p.category || '';
     document.getElementById('fQty').value = kit ? 0 : (p.quantity != null ? p.quantity : '');
     document.getElementById('fQty').disabled = kit;
-    document.getElementById('fReorder').value = p.reorderLevel != null ? p.reorderLevel : '';
+    var rIn = document.getElementById('fReorder'), cl0 = catLevelOf(p);
+    rIn.value = hasOwnLevel(p) ? p.reorderLevel : '';
+    rIn.disabled = kit;
+    rIn.placeholder = kit ? '\u2014' : (cl0 !== null ? String(cl0) : 'Category');
+    document.getElementById('fReorderHelp').textContent = kit ? 'A kit follows the stock of the items inside it.'
+      : hasOwnLevel(p) ? 'This item has its own level. Clear the box to follow its category' + (cl0 !== null ? ' (' + cl0 + ')' : '') + '.'
+      : 'Following its category' + (cl0 !== null ? ' (' + cl0 + ')' : ' (no minimum set yet)') + '. Type a number to give this item its own level.';
     document.getElementById('fPrice').value = kit ? '' : (p.price != null ? p.price : '');
     document.getElementById('fPrice').disabled = kit;
     document.getElementById('fUnit').value = p.unit || '';
@@ -1431,11 +1495,11 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     errBox.classList.remove('show');
 
     var data = {
-      reorderLevel: reorderRaw === '' ? 0 : Number(reorderRaw),
       unit: document.getElementById('fUnit').value.trim(),
       notes: document.getElementById('fNotes').value.trim(),
       updatedAt: new Date().toISOString()
     };
+    if (!kit) data.reorderLevel = reorderRaw === '' ? null : Number(reorderRaw);
     if (!kit) {
       var newQty = Number(qtyRaw), newPrice = priceRaw === '' ? 0 : Number(priceRaw);
       var adj = applyEditToLots(p, newQty, newPrice, todayStr());
@@ -2625,7 +2689,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var lines = [headers.join(',')];
     products.forEach(function (p) {
       lines.push(headers.map(function (h) {
-        var v = h === 'stockValue' ? String(roundMoney(stockValue(p))) : (p[h] != null ? String(p[h]) : '');
+        var v = h === 'stockValue' ? String(roundMoney(stockValue(p))) : (h === 'reorderLevel' ? (isKitProduct(p) ? '' : String(effectiveReorder(p))) : (p[h] != null ? String(p[h]) : ''));
         if (v.indexOf(',') !== -1 || v.indexOf('"') !== -1 || v.indexOf('\n') !== -1) {
           v = '"' + v.replace(/"/g, '""') + '"';
         }
@@ -2760,7 +2824,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (!list.length) { showToast('No SKUs yet'); return; }
     var rows = [['name', 'sku', 'category', 'quantity', 'reorderLevel', 'price', 'unit', 'notes', 'kitComponents']];
     list.forEach(function (p) {
-      rows.push([p.name, p.sku, p.category || '', '', p.reorderLevel != null ? p.reorderLevel : '', '', p.unit || 'Nos', p.notes || '', (p.kitComponents || []).join(';')]);
+      rows.push([p.name, p.sku, p.category || '', '', isKitProduct(p) ? '' : effectiveReorder(p), '', p.unit || 'Nos', p.notes || '', (p.kitComponents || []).join(';')]);
     });
     saveFile('aariro-sku-sheet.csv', '\ufeff' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\n'));
   }
@@ -2768,7 +2832,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   // =====================================================================================
   //  Create a SKU
   // =====================================================================================
-  var gen = { mode: 'individual', cat: '', des: '', size: '', pack: '1', packTouched: false, source: 'H', kit: [], reorder: '50', photoId: null, kitQuery: '' };
+  var gen = { mode: 'individual', cat: '', des: '', size: '', pack: '1', packTouched: false, source: 'H', kit: [], reorder: '', photoId: null, kitQuery: '' };
   var createBuilt = false;
   function genSku() {
     var n = /^\d{1,2}$/.test(String(gen.pack).trim()) ? parseInt(gen.pack, 10) : 0;
@@ -2776,9 +2840,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     return ['AA', gen.cat, gen.des, gen.size, pad2(n), gen.source + (gen.mode === 'kit' ? 'K' : 'I')].join('-');
   }
   function resetGen() {
-    gen = { mode: gen.mode, cat: '', des: '', size: '', pack: gen.mode === 'kit' ? '2' : '1', packTouched: false, source: 'H', kit: [], reorder: '50', photoId: null, kitQuery: '' };
+    gen = { mode: gen.mode, cat: '', des: '', size: '', pack: gen.mode === 'kit' ? '2' : '1', packTouched: false, source: 'H', kit: [], reorder: '', photoId: null, kitQuery: '' };
     sigs.createSel = null;
-    el('crKitSearch').value = ''; el('crReorder').value = '50';
+    el('crKitSearch').value = ''; el('crReorder').value = '';
     renderCreate();
   }
 
@@ -2804,7 +2868,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
           '<div id="crKitList" style="margin-top:8px; max-height:190px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div></div>' +
         '</div>' +
         '<div class="grid2">' +
-          '<div class="field"><label for="crReorder">Reorder at</label><input type="number" id="crReorder" min="0" step="1" value="50"></div>' +
+          '<div class="field" id="crReorderField"><label for="crReorder">Reorder at (optional)</label><input type="number" id="crReorder" min="0" step="1" placeholder="Follows the category"></div>' +
           '<div class="field" id="crPhotoField"><label>Photo (optional)</label><div style="display:flex; align-items:center; gap:10px;"><button type="button" class="btn" id="crPhotoBtn">Choose a photo</button><img id="crPhotoThumb" alt="" style="display:none; width:40px; height:40px; object-fit:cover; border-radius:8px; border:1px solid var(--border);"><input type="file" id="crPhotoFile" accept="image/*" hidden></div></div>' +
         '</div>' +
       '</div><div class="stack">' +
@@ -2857,7 +2921,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     }
     var kit = gen.mode === 'kit';
     Array.prototype.forEach.call(el('crMode').querySelectorAll('.type-btn'), function (b) { b.classList.toggle('active', b.getAttribute('data-mode') === gen.mode); });
-    el('crKitBox').hidden = !kit;
+    el('crKitBox').hidden = !kit; el('crReorderField').hidden = kit;
     el('crPackLabel').textContent = kit ? 'Pack (sets in the kit)' : 'Pack';
     if (document.activeElement !== el('crPack')) el('crPack').value = gen.pack;
     el('crSource').value = gen.source;
@@ -2915,8 +2979,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var kit = gen.mode === 'kit';
     if (kit && !gen.kit.length) { showToast('Add at least one item to this kit'); return; }
     if (products.some(function (p) { return (p.sku || '').toUpperCase() === sku; })) { showToast('This SKU already exists: ' + sku); return; }
-    var reorder = gen.reorder === '' ? 0 : Number(gen.reorder);
-    if (isNaN(reorder) || reorder < 0 || reorder !== Math.floor(reorder)) { showToast('Reorder level must be a whole number, 0 or more'); return; }
+    var reorder = (kit || gen.reorder === '') ? null : Number(gen.reorder);
+    if (reorder !== null && (isNaN(reorder) || reorder < 0 || reorder !== Math.floor(reorder))) { showToast('Reorder level must be a whole number, 0 or more'); return; }
     var now = nowIso();
     var rec = {
       name: skuDisplayName(gen.cat, gen.des, gen.size, gen.pack), sku: sku, category: libName('categories', gen.cat),
@@ -3104,7 +3168,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   function renderLists() {
     if (!listsBuilt) buildLists();
-    var sig = JSON.stringify(libraries) + '|' + me.role + '|' + JSON.stringify(libEdit) + '|' + products.map(function (p) { return (p.catCode || '') + (p.desCode || '') + (p.sizeCode || ''); }).join(',');
+    var sig = JSON.stringify(libraries) + JSON.stringify(catLevels) + '|' + me.role + '|' + JSON.stringify(libEdit) + '|' + products.map(function (p) { return (p.catCode || '') + (p.desCode || '') + (p.sizeCode || ''); }).join(',');
     if (!changed('lists', sig)) return;
     LIB_DEFS.forEach(function (def) {
       var items = (libraries[def.key] || []).slice().sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -3117,9 +3181,19 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
           if (editing) acts = '<button type="button" class="btn btn-sm btn-primary" data-save="' + escapeHtml(i.code) + '">Save</button> <button type="button" class="btn btn-sm" data-cancel="1">Cancel</button>';
           else acts = '<button type="button" class="btn btn-sm" data-ren="' + escapeHtml(i.code) + '">Rename</button> ' + (used ? '' : '<button type="button" class="btn btn-sm" data-del="' + escapeHtml(i.code) + '">Remove</button>');
         }
-        return '<tr><td>' + nameCell + '</td><td style="white-space:nowrap; font-weight:600; color:var(--ink-strong);">' + escapeHtml(i.code) + '</td><td class="num" style="color:var(--ink); font-size:12px;">' + used + ' SKU' + (used === 1 ? '' : 's') + '</td><td style="text-align:right; white-space:nowrap;">' + acts + '</td></tr>';
+        var minCell = '';
+        if (def.key === 'categories') {
+          var onlyKits = used > 0 && products.filter(function (p) { return p.catCode === i.code && !isKitProduct(p); }).length === 0;
+          var lv = catLevels[i.code], lvTxt = (lv === undefined || lv === null || lv === '') ? '' : String(lv);
+          minCell = '<td style="white-space:nowrap; font-size:12px; color:var(--ink);">' + (onlyKits ? 'Kits follow their items'
+            : me.role === 'owner' ? 'Min stock <input type="number" class="cat-min" data-code="' + escapeHtml(i.code) + '" min="0" step="1" value="' + escapeHtml(lvTxt) + '" placeholder="—" aria-label="Minimum stock for ' + escapeHtml(i.name) + '" style="width:74px;">'
+            : 'Min stock ' + (lvTxt === '' ? '—' : escapeHtml(lvTxt))) + '</td>';
+        }
+        return '<tr><td>' + nameCell + '</td><td style="white-space:nowrap; font-weight:600; color:var(--ink-strong);">' + escapeHtml(i.code) + '</td><td class="num" style="color:var(--ink); font-size:12px;">' + used + ' SKU' + (used === 1 ? '' : 's') + '</td>' + minCell + '<td style="text-align:right; white-space:nowrap;">' + acts + '</td></tr>';
       }).join('') + '</tbody></table></div>' : '<div class="helptext">Nothing here yet.</div>';
       var box = el('libItems_' + def.key);
+      if (def.key === 'categories' && items.length) box.insertAdjacentHTML('afterbegin', '<div class="helptext" style="margin:0 0 8px;">Minimum stock: an item is flagged Low when its quantity reaches this number. Each item follows its category unless it has its own level (edit the item). Kits follow the stock of their items.</div>');
+      Array.prototype.forEach.call(box.querySelectorAll('.cat-min'), function (inp) { inp.addEventListener('change', function () { saveCatMin(inp.getAttribute('data-code'), inp.value); }); });
       Array.prototype.forEach.call(box.querySelectorAll('[data-ren]'), function (b) { b.addEventListener('click', function () { libEdit = { key: def.key, code: b.getAttribute('data-ren') }; sigs.lists = null; renderLists(); }); });
       Array.prototype.forEach.call(box.querySelectorAll('[data-cancel]'), function (b) { b.addEventListener('click', function () { libEdit = null; sigs.lists = null; renderLists(); }); });
       Array.prototype.forEach.call(box.querySelectorAll('[data-save]'), function (b) { b.addEventListener('click', function () { renameLibItem(def.key, b.getAttribute('data-save'), box.querySelector('.lib-edit').value); }); });
@@ -3131,6 +3205,14 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         saveLibraries(next).then(function () { showToast('Removed'); renderLists(); }).catch(function () { showToast('Could not save — try again'); });
       }); });
     });
+  }
+  function saveCatMin(code, raw) {
+    if (me.role !== 'owner' || !dbNS) return;
+    var t = String(raw).trim();
+    if (t !== '' && (isNaN(Number(t)) || Number(t) < 0 || Number(t) !== Math.floor(Number(t)))) { showToast('Minimum stock must be a whole number, 0 or more'); sigs.lists = null; renderLists(); return; }
+    var next = Object.assign({}, catLevels);
+    if (t === '') delete next[code]; else next[code] = Number(t);
+    dbNS.doc('config/minimums').set({ levels: next, migrated: true }).then(function () { showToast('Minimum stock saved'); }).catch(function () { showToast('Could not save — try again'); });
   }
   // renaming changes the name only (the code is part of existing SKUs); stock rows that use it get their names refreshed
   function renameLibItem(key, code, rawName) {
@@ -3349,7 +3431,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       }
       h += '<p class="helptext" style="margin-top:12px;">Oldest stock is used first, so older lots keep their own cost price. The Cost price on the Stock row is the latest lot.</p>';
     }
-    h += '<div class="helptext">Reorder at ' + (p.reorderLevel != null && p.reorderLevel !== '' ? Number(p.reorderLevel) : 0) + ' · Unit: ' + escapeHtml(p.unit || 'Nos') + '</div>';
+    h += '<div class="helptext">' + escapeHtml(reorderText(p)) + ' · Unit: ' + escapeHtml(p.unit || 'Nos') + '</div>';
     el('detailsBody').innerHTML = h;
     detailsOverlay.classList.add('show');
   }
@@ -3360,24 +3442,26 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
   function exportLowStock() {
     var rank = { out: 0, low: 1 };
-    var list = activeProducts().filter(function (p) { return !isKitProduct(p) && statusOf(p) !== 'ok'; }).sort(function (a, b) {
+    var list = activeProducts().filter(function (p) { return statusOf(p) !== 'ok'; }).sort(function (a, b) {
       var d = rank[statusOf(a)] - rank[statusOf(b)];
       return d || (a.sku || '').localeCompare(b.sku || '');
     });
     if (!list.length) { showToast('Nothing is low or out of stock right now'); return; }
-    var rows = [['Status', 'SKU', 'Product', 'Category', 'Quantity', 'Reorder level', 'Shortfall', 'Latest cost price (₹)']];
+    var rows = [['Status', 'SKU', 'Product', 'Category', 'Quantity', 'Reorder level', 'Level from', 'Shortfall', 'Latest cost price (₹)', 'Limited by']];
     list.forEach(function (p) {
-      var q = effectiveQty(p), r = Number(p.reorderLevel) || 0;
-      rows.push([statusOf(p) === 'out' ? 'Out of stock' : 'Low', p.sku, p.name, p.category || '', q, r, Math.max(0, r - q), roundMoney(p.price)]);
+      var st = statusOf(p) === 'out' ? 'Out of stock' : 'Low';
+      if (isKitProduct(p)) { rows.push([st, p.sku, p.name, p.category || '', effectiveQty(p), '', 'Kit (from its items)', '', '', statusInfo(p).reason]); return; }
+      var li = levelInfo(p), q = effectiveQty(p), r = li.level || 0;
+      rows.push([st, p.sku, p.name, p.category || '', q, r, li.source === 'custom' ? 'Custom' : li.source === 'category' ? 'Category' : 'Not set', Math.max(0, r - q), roundMoney(p.price), '']);
     });
     var day = todayStr();
     if (typeof XLSX === 'undefined') {
-      saveFile('aariro-low-and-out-of-stock-' + day + '.csv', '\ufeff' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\n'));
+      saveFile('aariro-low-and-out-of-stock-' + day + '.csv', '﻿' + rows.map(function (r) { return r.map(csvCell).join(','); }).join('\n'));
       return;
     }
     var ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 56 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 10 }, { wch: 20 }];
-    for (var r = 2; r <= rows.length; r++) { var c = ws[XLSX.utils.encode_cell({ c: 7, r: r - 1 })]; if (c && typeof c.v === 'number') c.z = '#,##0.00'; }
+    ws['!cols'] = [{ wch: 14 }, { wch: 22 }, { wch: 56 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 20 }, { wch: 10 }, { wch: 20 }, { wch: 70 }];
+    for (var r = 2; r <= rows.length; r++) { var c = ws[XLSX.utils.encode_cell({ c: 8, r: r - 1 })]; if (c && typeof c.v === 'number') c.z = '#,##0.00'; }
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Low & out of stock');
     var out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
     saveFile('aariro-low-and-out-of-stock-' + day + '.xlsx', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
