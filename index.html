@@ -928,6 +928,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   var canWrite = true;             // optimistic; corrected on first failed write
   var unsubscribe = null;
   var unsubscribeDispatches = null;
+  var uploadsOk = true;
   var uploadsList = [];        // one record per stock sheet that was added (used to block the same sheet twice)
   var bulkOverride = null;
   var catLevels = {};          // category code -> minimum stock (owner sets these)
@@ -1392,8 +1393,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         if (activeView === 'labels') renderLabels();
       }, function () { /* the log is supplementary; ignore transient errors */ });
       dbNS.collection('uploads').onSnapshot(function (snap) {
+        uploadsOk = true;
         uploadsList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
-      }, function () {});
+      }, function () { uploadsOk = false; });
       dbNS.doc('config/minimums').onSnapshot(function (snap) {
         var data = snap.exists ? (snap.data() || {}) : {};
         catLevels = data.levels && typeof data.levels === 'object' ? data.levels : {};
@@ -2754,7 +2756,8 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     bulkOverride = null;
     document.getElementById('bulkRestockPanel').hidden = true; document.getElementById('bulkRestockMain').style.display = '';
     var lastU = uploadsList.slice().sort(function (a, b) { return (b.at || '').localeCompare(a.at || ''); })[0];
-    document.getElementById('bulkRestockLast').textContent = lastU ? 'Last upload: ' + fmtStamp(lastU.at) + (lastU.byName ? ' · ' + lastU.byName : '') + ' · ' + (Number(lastU.products) || 0) + ' products, ' + (Number(lastU.units) || 0) + ' units' : '';
+    document.getElementById('bulkRestockLast').style.color = uploadsOk ? '' : '#B3261E';
+    document.getElementById('bulkRestockLast').textContent = !uploadsOk ? 'The duplicate-upload check is not set up yet (the owner needs to publish the latest Firestore rules). Uploads will be refused until it is.' : lastU ? 'Last upload: ' + fmtStamp(lastU.at) + (lastU.byName ? ' · ' + lastU.byName : '') + ' · ' + (Number(lastU.products) || 0) + ' products, ' + (Number(lastU.units) || 0) + ' units' : '';
     bulkRestockOverlay.classList.add('show');
   }
   document.getElementById('bulkRestockClose').addEventListener('click', function () { bulkRestockOverlay.classList.remove('show'); });
@@ -2843,14 +2846,22 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var fileEl = document.getElementById('bulkRestockFile'), fname = (fileEl.files && fileEl.files[0] && fileEl.files[0].name) || 'pasted sheet';
     var dup = !ovr ? findUploadByHash(h) : null;
     if (dup) { btn.disabled = false; btn.textContent = 'Add to stock'; showDupPanel(dup); return; }
-    runBulkRestock(rowsDone, nowKey).then(function (res) {
-      btn.disabled = false;
-      btn.textContent = 'Add to stock';
-      var units = rowsDone.reduce(function (t, r) { return t + (Number(r.quantity) || 0); }, 0);
-      var rec = { hash: h, at: nowKey, createdAtKey: nowKey, byId: me.id || null, byName: me.name || '', products: rowsDone.length, units: units, fileName: fname };
-      if (ovr) rec.overrideReason = ovr;
-      var save = res.failed ? Promise.resolve() : dbNS.doc('uploads/' + (ovr ? h + '-' + Date.now().toString(36) : h)).set(rec).catch(function () {});
-      return save.then(function () { bulkOverride = null; showDonePanel(rowsDone.length, units, res.failed); });
+    var units = rowsDone.reduce(function (t, r) { return t + (Number(r.quantity) || 0); }, 0);
+    var rec = { hash: h, at: nowKey, createdAtKey: nowKey, byId: me.id || null, byName: me.name || '', products: rowsDone.length, units: units, fileName: fname };
+    if (ovr) rec.overrideReason = ovr;
+    var claimId = ovr ? h + '-' + Date.now().toString(36) : h;
+    // the upload is registered first: if that cannot be saved (the same sheet was just added, or the duplicate check is not set up), nothing is added
+    dbNS.doc('uploads/' + claimId).set(rec).then(function () {
+      return runBulkRestock(rowsDone, nowKey).then(function (res) {
+        btn.disabled = false;
+        btn.textContent = 'Add to stock';
+        bulkOverride = null;
+        showDonePanel(rowsDone.length, units, res.failed);
+      });
+    }, function () {
+      btn.disabled = false; btn.textContent = 'Add to stock';
+      bulkPanel('<h3 style="margin:0 0 8px;">Nothing was added</h3><div class="helptext" style="margin:0;">This upload could not be registered, so the stock was <b>not</b> changed. Either this same sheet was just added by someone else, or the duplicate check is not set up yet (the owner needs to publish the latest Firestore rules). Please check the Stock tab before trying again.</div>', false);
+      return 'claim-failed';
     }).catch(function (err) {
       btn.disabled = false;
       btn.textContent = 'Add to stock';
@@ -2858,7 +2869,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
         bulkRestockOverlay.classList.remove('show');
         showPermBanner('You have view-only access to this inventory. Ask the store owner to give you edit access to make changes.');
       } else {
-        errBox.textContent = 'Restock stopped due to an error. Some rows may have been applied.';
+        errBox.textContent = 'Restock stopped due to an error. Some rows may have been applied. Do not upload the sheet again; ask the owner to check the Activity list.';
         errBox.classList.add('show');
       }
     });
