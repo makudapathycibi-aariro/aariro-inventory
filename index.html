@@ -389,6 +389,7 @@
   <nav class="tabs" id="mainTabs" aria-label="Sections">
     <button type="button" class="tab active" data-view="stock">Stock</button>
     <button type="button" class="tab need-edit" data-view="orders">Orders</button>
+    <button type="button" class="tab need-edit" data-view="picks">Pick lists</button>
     <button type="button" class="tab" data-view="returns">Returns <span class="tab-badge" id="retBadge" hidden></span></button>
     <button type="button" class="tab" data-view="activity">Activity</button>
     <button type="button" class="tab" data-view="skus">Products &amp; SKUs</button>
@@ -438,6 +439,7 @@
             <button class="menu-item need-owner" id="menuReverseUploads" type="button">Reverse a stock upload<span class="menu-sub">Owner only · take back a wrong upload</span></button>
             <button class="menu-item need-owner" id="menuResetStock" type="button">Reset all stock to zero<span class="menu-sub">Owner only · keeps SKUs and kits</span></button>
             <button class="menu-item" id="menuExportLow" type="button">Export low &amp; out of stock (Excel)<span class="menu-sub">What to reorder, with shortfall</span></button>
+            <button class="menu-item" id="menuExportReceived" type="button">Export total stock received (Excel)<span class="menu-sub">Everything that came in till today, dispatches ignored</span></button>
             <button class="menu-item" id="menuExportLots" type="button">Export stock by lot (Excel)<span class="menu-sub">Every lot with its cost price</span></button>
           </div>
         </div>
@@ -481,6 +483,16 @@
       </div>
     </div>
     <p class="foot-note">Kits show how many can be made from what is on the shelf and are left out of the totals.</p>
+  </section>
+
+  <!-- ===== Pick lists ===== -->
+  <section class="view" id="viewPicks" hidden>
+    <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; margin-bottom:14px;">
+      <h1 class="page-title" style="margin:0;">Pick lists</h1><span style="flex:1;"></span>
+      <button class="btn need-owner" id="pkSetupBtn" type="button">Platform codes &amp; racks</button>
+      <button class="btn btn-primary" id="pkImportBtn" type="button">Import orders</button>
+    </div>
+    <div id="pkBody"></div>
   </section>
 
   <!-- ===== Orders ===== -->
@@ -718,6 +730,54 @@
         <button class="btn" id="upPreviewBtn" type="button" disabled>Preview</button>
         <button class="btn btn-primary" id="upConfirm" type="button" disabled>Reverse selected</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="pkImportOverlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2>Import orders</h2><button class="close-x" id="pkImpClose" type="button">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-error" id="pkImpError"></div>
+      <div class="grid2">
+        <div class="field"><label for="pkImpPlatform">Platform</label><select id="pkImpPlatform" data-plain></select></div>
+        <div class="field"><label for="pkImpRun">Add to</label><select id="pkImpRun" data-plain></select></div>
+      </div>
+      <div class="field" id="pkImpRunNameWrap"><label for="pkImpRunName">Run name</label><input type="text" id="pkImpRunName"></div>
+      <div class="field"><label for="pkImpFiles">Order files (PDF, CSV or Excel, one or more)</label><div class="file-input-wrap"><input type="file" id="pkImpFiles" accept=".pdf,.csv,.xlsx,.xls" multiple></div></div>
+      <div id="pkImpReview"></div>
+      <div class="modal-foot">
+        <button class="btn" id="pkImpCancel" type="button">Cancel</button>
+        <button class="btn btn-primary" id="pkImpGo" type="button" disabled>Add to run</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="pkSetupOverlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2>Platform codes &amp; racks</h2><button class="close-x" id="pkSetupClose" type="button">&times;</button></div>
+    <div class="modal-body">
+      <h3 style="margin:0 0 6px;">Platform codes</h3>
+      <div class="helptext" style="margin:0 0 8px;">Each platform's old or seller code is matched to our SKU. A code that already is one of our SKUs needs no mapping. Upload a sheet with columns <b>code</b>, <b>sku</b> and (optional) <b>platform</b> (Shopify, Unicommerce, All Things Baby, Babyamore, Store, or blank for all). If any row is wrong, nothing is saved.</div>
+      <div class="field"><div class="file-input-wrap"><input type="file" id="pkMapFile" accept=".csv,.xlsx,.xls"></div></div>
+      <div class="grid2">
+        <div class="field"><label for="pkMapPlat">Platform</label><select id="pkMapPlat" data-plain></select></div>
+        <div class="field"><label for="pkMapCode">Platform code</label><input type="text" id="pkMapCode"></div>
+      </div>
+      <div class="field"><label for="pkMapSku">Our SKU</label><select id="pkMapSku" data-always-search></select></div>
+      <div style="margin:6px 0;"><button class="btn btn-sm" id="pkMapAdd" type="button">Add mapping</button></div>
+      <div class="helptext" id="pkMapMsg" style="margin:6px 0;"></div>
+      <div class="field"><label for="pkMapSearch">Search saved mappings</label><input type="text" id="pkMapSearch"></div>
+      <div class="helptext" id="pkMapCount" style="margin:0 0 6px;"></div>
+      <div id="pkMapList"></div>
+      <h3 style="margin:18px 0 6px;">Rack order</h3>
+      <div class="helptext" style="margin:0 0 8px;">Upload a sheet with a <b>sku</b> column and a <b>rack</b> column, top row = first to pick. The pick list follows this order.</div>
+      <div class="field"><div class="file-input-wrap"><input type="file" id="pkRackFile" accept=".csv,.xlsx,.xls"></div></div>
+      <div class="helptext" id="pkRackMsg" style="margin:6px 0;"></div>
+      <div class="helptext" id="pkRackCount" style="margin:0 0 6px;"></div>
+      <button class="btn btn-sm" id="pkRackClear" type="button">Remove rack order</button>
+      <div class="modal-foot"><button class="btn btn-primary" id="pkSetupDone" type="button">Done</button></div>
     </div>
   </div>
 </div>
@@ -1424,6 +1484,24 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       dbNS.collection('returns').onSnapshot(function (snap) {
         returnsList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
         if (typeof onOrdersChanged === 'function') onOrdersChanged();
+      }, function () {});
+      dbNS.doc('config/skumap').onSnapshot(function (snap) {
+        var d = snap.exists ? (snap.data() || {}) : {};
+        skuMapRows = Array.isArray(d.rows) ? d.rows : [];
+        if (activeView === 'picks') renderPicks();
+      }, function () {});
+      dbNS.doc('config/racks').onSnapshot(function (snap) {
+        var d = snap.exists ? (snap.data() || {}) : {};
+        rackRows = Array.isArray(d.rows) ? d.rows : [];
+        if (activeView === 'picks') renderPicks();
+      }, function () {});
+      dbNS.collection('runs').onSnapshot(function (snap) {
+        runsList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
+        if (activeView === 'picks') renderPicks();
+      }, function () {});
+      dbNS.collection('pickorders').onSnapshot(function (snap) {
+        pickOrders = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
+        if (activeView === 'picks') renderPicks();
       }, function () {});
       dbNS.collection('expected').onSnapshot(function (snap) {
         expectedList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
@@ -2372,6 +2450,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   document.getElementById('menuRestock').addEventListener('click', function () { openDispatch(null, 'restock'); });
   document.getElementById('menuExportInventory').addEventListener('click', exportInventoryCsv);
   document.getElementById('menuExportLots').addEventListener('click', exportStockByLot);
+  document.getElementById('menuExportReceived').addEventListener('click', exportStockReceived);
   document.getElementById('menuExportLow').addEventListener('click', exportLowStock);
   (function () {
     var ov = document.getElementById('uploadsOverlay'), listEl = document.getElementById('upList'), prevEl = document.getElementById('upPreview');
@@ -2918,7 +2997,557 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   // =====================================================================================
   //  Merged tool: sections, SKUs, lists, retiring, labels, scanning, managers
   // =====================================================================================
-  var VIEWS = ['stock', 'orders', 'returns', 'activity', 'skus', 'labels'];
+  // =====================================================================================
+  //  Pick lists: import the day's orders from every platform, map their codes to our SKUs,
+  //  and make one consolidated pick list (in rack order) with a stock check
+  // =====================================================================================
+  var PK_PLATFORMS = [
+    { id: 'Shopify', label: 'Shopify', key: 'Shopify', pdf: 'shopify' },
+    { id: 'FirstCry', label: 'FirstCry', key: 'Unicommerce', pdf: 'uni' },
+    { id: 'Nykaa', label: 'Nykaa', key: 'Unicommerce', pdf: 'uni' },
+    { id: 'FirstCry + Nykaa', label: 'FirstCry + Nykaa (one combined list)', key: 'Unicommerce', pdf: 'uni' },
+    { id: 'All Things Baby', label: 'All Things Baby', key: 'All Things Baby', pdf: 'atb' },
+    { id: 'Babyamore', label: 'Babyamore', key: 'Babyamore', pdf: 'bab' },
+    { id: 'Store order', label: 'Store order (PO or Excel list)', key: 'Store', pdf: null }
+  ];
+  var PK_KEYS = ['All', 'Shopify', 'Unicommerce', 'All Things Baby', 'Babyamore', 'Store'];
+  var skuMapRows = [], rackRows = [], runsList = [], pickOrders = [];
+  var pkRunId = 'all', pkFiles = [], pkView = null, pkBusy = false, pkPdfReady = null;
+
+  function pkPlat(id) { return PK_PLATFORMS.filter(function (p) { return p.id === id; })[0] || PK_PLATFORMS[0]; }
+  function pkNormCode(c) { return String(c == null ? '' : c).replace(/\s+/g, '').toLowerCase(); }
+  function pkNormOrder(o) { return String(o == null ? '' : o).replace(/^#/, '').trim().toLowerCase(); }
+  function pkKeyFor(platId, orderNo) { return (platId + '__' + pkNormOrder(orderNo)).toLowerCase().replace(/[^a-z0-9._-]+/g, '-'); }
+  function pkNormPlatformKey(raw) {
+    var t = String(raw || '').trim().toLowerCase();
+    if (t === '' || t === 'all' || t === '*' || t === 'any') return 'All';
+    if (t === 'shopify') return 'Shopify';
+    if (/^(unicommerce|first ?cry|nykaa|fc|unicom)/.test(t)) return 'Unicommerce';
+    if (/^(all things baby|atb)/.test(t)) return 'All Things Baby';
+    if (/^(baby ?amore)/.test(t)) return 'Babyamore';
+    if (/^(store|po|purchase)/.test(t)) return 'Store';
+    return null;
+  }
+  // our SKU for a platform's code, or why it can't be found
+  function pkResolve(key, code) {
+    var n = pkNormCode(code);
+    if (!n) return { product: null, why: 'unmapped' };
+    var hit = skuMapRows.filter(function (r) { return r.p === key && pkNormCode(r.c) === n; })[0] || skuMapRows.filter(function (r) { return r.p === 'All' && pkNormCode(r.c) === n; })[0];
+    var p = findBySku(hit ? hit.s : code);   // a code that already is one of our SKUs works as it is
+    if (!p) return { product: null, why: 'unmapped' };
+    if (isRetired(p)) return { product: null, why: 'retired', retiredSku: p.sku };
+    return { product: p, why: '' };
+  }
+
+  // ---- reading files ----
+  // ---------- reading order PDFs (text layer only) ----------
+  // positioned text items -> lines of cells; tiny fragments that touch are joined into one cell
+  function pdfLines(items) {
+    var its = items.filter(function (i) { return i.str && i.str.trim() !== ''; }).map(function (i) { return { x: i.transform[4], y: i.transform[5], w: i.width || 0, s: i.str }; });
+    its.sort(function (a, b) { return b.y - a.y || a.x - b.x; });
+    var lines = [];
+    its.forEach(function (it) {
+      var ln = lines.filter(function (l) { return Math.abs(l.y - it.y) <= 2.5; })[0];
+      if (!ln) { ln = { y: it.y, items: [] }; lines.push(ln); }
+      ln.items.push(it);
+    });
+    lines.sort(function (a, b) { return b.y - a.y; });
+    lines.forEach(function (ln) {
+      ln.items.sort(function (a, b) { return a.x - b.x; });
+      var cells = [];
+      ln.items.forEach(function (it) {
+        var c = cells[cells.length - 1];
+        if (c && it.x - c.end < 3.2) { c.text += (it.x - c.end > 1.2 && !/^\s/.test(it.s) && !/\s$/.test(c.text) ? ' ' : '') + it.s; c.end = it.x + it.w; }
+        else cells.push({ x: it.x, end: it.x + it.w, text: it.s });
+      });
+      ln.cells = cells.map(function (c) { return { x: Math.round(c.x), text: c.text.replace(/\s+/g, ' ').trim() }; });
+    });
+    return lines;
+  }
+  function pdfHasCells(line, words) { return words.every(function (w) { return line.cells.some(function (c) { return c.text.toLowerCase().indexOf(w.toLowerCase()) === 0; }); }); }
+  function pdfColsFrom(line, words) {
+    var cols = [];
+    words.forEach(function (w) { var c = line.cells.filter(function (cc) { return cc.text.toLowerCase().indexOf(w.toLowerCase()) === 0; })[0]; if (c) cols.push({ name: w, x: c.x }); });
+    return cols.sort(function (a, b) { return a.x - b.x; });
+  }
+  function pdfColOf(cols, x) { var best = null; cols.forEach(function (c) { if (c.x <= x + 8) best = c; }); return best ? best.name : null; }
+  function pdfCellsIn(line, cols, name) { return line.cells.filter(function (c) { return pdfColOf(cols, c.x) === name; }).map(function (c) { return c.text; }); }
+  function pdfJoinCode(parts) { return parts.join('').replace(/\s+/g, ''); }
+
+  // Shopify "Order Printer" pick list: one table per page (Product Title, Variant, Order, SKU, Qty)
+  function parseShopifyPdf(pages) {
+    var byOrder = {}, order = [];
+    pages.forEach(function (lines) {
+      var hi = -1;
+      lines.forEach(function (l, i) { if (hi < 0 && pdfHasCells(l, ['Product Title', 'SKU', 'Qty'])) hi = i; });
+      if (hi < 0) return;
+      var cols = pdfColsFrom(lines[hi], ['Product Title', 'Variant', 'Order', 'SKU', 'Qty']), cur = null;
+      function flush() {
+        if (cur && cur.order && cur.sku) {
+          var k = cur.order.replace(/^#/, '');
+          if (!byOrder[k]) { byOrder[k] = { orderNo: cur.order, lines: [] }; order.push(k); }
+          byOrder[k].lines.push({ code: cur.sku, name: cur.title.trim(), qty: cur.qty });
+        }
+        cur = null;
+      }
+      for (var i = hi + 1; i < lines.length; i++) {
+        var l = lines[i];
+        if (/^total\b/i.test(l.cells[0] ? l.cells[0].text : '')) { flush(); break; }
+        var ord = pdfCellsIn(l, cols, 'Order').filter(function (t) { return /^#\S+/.test(t); })[0];
+        if (ord) { flush(); cur = { order: ord, title: '', sku: '', qty: 0 }; }
+        if (!cur) continue;
+        var t = pdfCellsIn(l, cols, 'Product Title').join(' '); if (t) cur.title += (cur.title ? ' ' : '') + t;
+        var s = pdfCellsIn(l, cols, 'SKU'); if (s.length) cur.sku += pdfJoinCode(s);
+        var q = pdfCellsIn(l, cols, 'Qty').filter(function (x) { return /^\d+$/.test(x); })[0]; if (q) cur.qty = parseInt(q, 10);
+      }
+      flush();
+    });
+    return order.map(function (k) { return byOrder[k]; });
+  }
+
+  // Unicommerce consolidated pick list (S.No, SKU, Item Name, Brand, Qty): totals only, no order numbers
+  function parseUnicommercePdf(pages) {
+    var rows = [];
+    pages.forEach(function (lines) {
+      var hi = -1;
+      lines.forEach(function (l, i) { if (hi < 0 && pdfHasCells(l, ['S.No', 'SKU', 'Qty'])) hi = i; });
+      if (hi < 0) return;
+      var cols = pdfColsFrom(lines[hi], ['S.No', 'SKU', 'Item Name', 'Brand', 'Qty', 'Image']), pageRows = [];
+      for (var i = hi + 1; i < lines.length; i++) {
+        var l = lines[i];
+        var sn = pdfCellsIn(l, cols, 'S.No').filter(function (t) { return /^\d+$/.test(t); })[0];
+        var sk = pdfCellsIn(l, cols, 'SKU');
+        if (sn && sk.length) {
+          var q = pdfCellsIn(l, cols, 'Qty').filter(function (x) { return /^\d+$/.test(x); })[0];
+          pageRows.push({ y: l.y, code: pdfJoinCode(sk), qty: q ? parseInt(q, 10) : 1, parts: [] });
+        }
+      }
+      for (var j = hi + 1; j < lines.length; j++) {
+        var nm = pdfCellsIn(lines[j], cols, 'Item Name').join(' ');
+        if (!nm || !pageRows.length) continue;
+        var best = pageRows.reduce(function (m, r) { return Math.abs(r.y - lines[j].y) < Math.abs(m.y - lines[j].y) ? r : m; }, pageRows[0]);
+        best.parts.push({ y: lines[j].y, t: nm });
+      }
+      pageRows.forEach(function (r) {
+        r.parts.sort(function (a, b) { return b.y - a.y; });
+        rows.push({ code: r.code, name: r.parts.map(function (p) { return p.t; }).join(' ').replace(/\s+Aariro$/i, '').trim(), qty: r.qty });
+      });
+    });
+    return rows.length ? [{ orderNo: '', totalsOnly: true, lines: rows }] : [];
+  }
+
+  // All Things Baby invoice: "Order No: #143465", then Sr No / Product Name / Product Code / Qty ...
+  function parseAtbPdf(pages) {
+    var out = [];
+    pages.forEach(function (lines) {
+      var orderNo = '';
+      lines.forEach(function (l) { l.cells.forEach(function (c) { var m = /Order No:\s*#?(\S+)/i.exec(c.text); if (m && !orderNo) orderNo = m[1]; }); });
+      var hi = -1;
+      lines.forEach(function (l, i) { if (hi < 0 && pdfHasCells(l, ['Sr', 'Product Name', 'Qty'])) hi = i; });
+      if (!orderNo || hi < 0) return;
+      var items = [], cur = null;
+      function flush() { if (cur && cur.code) items.push({ code: cur.code, name: cur.name.trim(), qty: cur.qty || 1 }); cur = null; }
+      for (var i = hi + 1; i < lines.length; i++) {
+        var l = lines[i], c = l.cells;
+        if (/^total\b/i.test(c[0] ? c[0].text : '')) { flush(); break; }
+        if (c.length >= 4 && /^\d+$/.test(c[0].text) && c[0].x < 45) {
+          var ci = -1;
+          for (var k = 2; k < c.length; k++) { if (/^[A-Za-z0-9][A-Za-z0-9_.\/-]*$/.test(c[k].text) && /[-_]/.test(c[k].text)) { ci = k; break; } }
+          if (ci > 0) {
+            flush();
+            var qi = -1;
+            for (var m = ci + 1; m < c.length; m++) { if (/^\d+$/.test(c[m].text)) { qi = m; break; } }
+            cur = { code: c[ci].text, name: c[1].text, nameX: c[1].x, codeX: c[ci].x, qty: qi > 0 ? parseInt(c[qi].text, 10) : 1 };
+            continue;
+          }
+        }
+        if (cur) {
+          c.forEach(function (cell) { if (cell.x >= cur.nameX - 4 && cell.x < cur.codeX - 12) cur.name += ' ' + cell.text; });
+        }
+      }
+      flush();
+      if (items.length) out.push({ orderNo: orderNo, lines: items });
+    });
+    return out;
+  }
+
+  // Babyamore shipping invoice: "Order BA-125388", then name / code / "1 of 1" / barcode / price per item
+  function parseBabyamorePdf(pages) {
+    var out = [];
+    pages.forEach(function (lines) {
+      var orderNo = '';
+      lines.forEach(function (l) { l.cells.forEach(function (c) { var m = /^Order\s+(\S+)$/i.exec(c.text); if (m && !orderNo) orderNo = m[1]; }); });
+      var start = -1, end = lines.length;
+      lines.forEach(function (l, i) { if (start < 0 && l.cells.some(function (c) { return /^items$/i.test(c.text); })) start = i; if (/thank you/i.test(l.cells.map(function (c) { return c.text; }).join(' ')) && i < end) end = i; });
+      if (!orderNo || start < 0) return;
+      var items = [], nameParts = [], code = '', qty = 0;
+      for (var i = start + 1; i < end; i++) {
+        var txt = lines[i].cells.map(function (c) { return c.text; });
+        var qm = txt.map(function (t) { return /^(\d+)\s+of\s+\d+$/i.exec(t); }).filter(Boolean)[0];
+        if (qm) qty = parseInt(qm[1], 10);
+        var main = txt.filter(function (t) { return !/^(\d+)\s+of\s+\d+$/i.test(t); }).join(' ').trim();
+        if (!main) continue;
+        if (/^barcode\b/i.test(main)) continue;
+        if (/^rs\.?\s*[\d,.]+/i.test(main)) { if (code) items.push({ code: code, name: nameParts.join(' ').trim(), qty: qty || 1 }); nameParts = []; code = ''; qty = 0; continue; }
+        if (!code && /^[A-Za-z][A-Za-z0-9]*_[A-Za-z0-9]+$/.test(main)) { code = main; continue; }
+        if (!code) nameParts.push(main);
+      }
+      if (items.length) out.push({ orderNo: orderNo, lines: items });
+    });
+    return out;
+  }
+
+  function pkLoadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve();
+    if (pkPdfReady) return pkPdfReady;
+    pkPdfReady = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+      s.onload = function () { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; resolve(); };
+      s.onerror = function () { pkPdfReady = null; reject(new Error('pdf.js did not load')); };
+      document.head.appendChild(s);
+    });
+    return pkPdfReady;
+  }
+  function pkReadPdfPages(file) {
+    return new Promise(function (resolve, reject) {
+      var r = new FileReader();
+      r.onerror = function () { reject(new Error('read')); };
+      r.onload = function () {
+        pkLoadPdfJs().then(function () { return window.pdfjsLib.getDocument({ data: new Uint8Array(r.result) }).promise; }).then(function (doc) {
+          var pages = [], chain = Promise.resolve();
+          for (var i = 1; i <= doc.numPages; i++) (function (n) { chain = chain.then(function () { return doc.getPage(n); }).then(function (pg) { return pg.getTextContent(); }).then(function (tc) { pages.push(pdfLines(tc.items)); }); })(i);
+          return chain.then(function () { return pages; });
+        }).then(resolve, reject);
+      };
+      r.readAsArrayBuffer(file);
+    });
+  }
+  function pkParseCsvOrders(text, fileName) {
+    var rows = csvToRows(text), hs = sheetHeaders(text);
+    if (!rows.length) return { orders: [], error: 'The file is empty.' };
+    function pick(names) { for (var i = 0; i < names.length; i++) if (hs.indexOf(names[i]) !== -1) return names[i]; return ''; }
+    var shopify = hs.indexOf('lineitem sku') !== -1;
+    var cSku = pick(['lineitem sku', 'sku', 'seller sku', 'seller sku code', 'product code', 'item code', 'item sku', 'code']);
+    var cQty = pick(['lineitem quantity', 'quantity', 'qty', 'order qty']);
+    var cOrd = shopify ? 'name' : pick(['order', 'order no', 'order number', 'order id', 'sales order code', 'shipment code', 'po', 'po number', 'po no']);
+    var cName = shopify ? 'lineitem name' : pick(['product name', 'item name', 'name', 'description']);
+    if (!cSku || !cQty) return { orders: [], error: 'Could not find the SKU and quantity columns. The sheet needs a "sku" column and a "quantity" column (an "order" column is optional).' };
+    var base = String(fileName || 'order').replace(/\.[^.]+$/, ''), byOrder = {}, order = [], bad = [];
+    rows.forEach(function (r, i) {
+      var code = String(r[cSku] || '').trim(); if (!code) return;
+      var rawQ = String(r[cQty] || '').trim(), q = Number(rawQ);
+      if (rawQ === '' || isNaN(q) || q <= 0 || q !== Math.floor(q)) { bad.push('Row ' + (i + 2) + ' (' + code + '): quantity "' + rawQ + '" is not a whole number above 0'); return; }
+      var on = cOrd ? String(r[cOrd] || '').trim() : ''; if (!on) on = base;
+      var k = pkNormOrder(on);
+      if (!byOrder[k]) { byOrder[k] = { orderNo: on, lines: [] }; order.push(k); }
+      byOrder[k].lines.push({ code: code, name: cName ? String(r[cName] || '').trim() : '', qty: q });
+    });
+    if (bad.length) return { orders: [], error: bad.slice(0, 6).join('; ') + (bad.length > 6 ? ' … and ' + (bad.length - 6) + ' more' : '') };
+    return { orders: order.map(function (k) { return byOrder[k]; }), error: order.length ? '' : 'No order lines found in this file.' };
+  }
+  function pkReadOne(file, plat) {
+    var isPdf = /\.pdf$/i.test(file.name || '');
+    if (!isPdf) return new Promise(function (resolve) { readSpreadsheetFile(file, function (t) { resolve(pkParseCsvOrders(t, file.name)); }, function (m) { resolve({ orders: [], error: m }); }); });
+    if (!plat.pdf) return Promise.resolve({ orders: [], error: 'PDF is not supported for ' + plat.label + '. Upload a CSV or Excel list.' });
+    return pkReadPdfPages(file).then(function (pages) {
+      var parsed = plat.pdf === 'shopify' ? parseShopifyPdf(pages) : plat.pdf === 'uni' ? parseUnicommercePdf(pages) : plat.pdf === 'atb' ? parseAtbPdf(pages) : parseBabyamorePdf(pages);
+      return parsed.length ? { orders: parsed, error: '' } : { orders: [], error: 'No order lines were found. Is this a ' + plat.label + ' file?' };
+    }).catch(function () { return { orders: [], error: 'Could not read this PDF.' }; });
+  }
+
+  // ---- review before saving ----
+  function pkBuildView(platId, results) {
+    var plat = pkPlat(platId), orders = [], seen = {}, errs = [], dupInFiles = 0;
+    results.forEach(function (r) {
+      if (r.error) errs.push(r.file + ': ' + r.error);
+      (r.orders || []).forEach(function (o) {
+        var orderNo = o.orderNo;
+        if (o.totalsOnly) { orderNo = 'LIST-' + cyrb53(o.lines.map(function (l) { return pkNormCode(l.code) + '|' + l.qty; }).sort().join(';'), 3).toString(16); }
+        var key = pkKeyFor(plat.id, orderNo);
+        if (seen[key]) { dupInFiles++; return; }
+        seen[key] = 1;
+        orders.push({ key: key, orderNo: orderNo, display: o.totalsOnly ? 'Combined list (no order numbers)' : orderNo, totalsOnly: !!o.totalsOnly, lines: o.lines, fileName: r.file });
+      });
+    });
+    return { plat: plat, orders: orders, errs: errs, dupInFiles: dupInFiles };
+  }
+  function pkEvaluate(view) {
+    var existing = {}; pickOrders.forEach(function (o) { existing[o.id] = o; });
+    var unmapped = {};
+    view.orders.forEach(function (o) {
+      o.dup = existing[o.key] || null; o.bad = false;
+      o.rl = o.lines.map(function (l) { var r = pkResolve(view.plat.key, l.code); if (!r.product) { o.bad = true; unmapped[l.code] = unmapped[l.code] || { code: l.code, name: l.name, why: r.why, retiredSku: r.retiredSku || '' }; } return { line: l, product: r.product, why: r.why }; });
+    });
+    view.unmapped = Object.keys(unmapped).map(function (k) { return unmapped[k]; });
+    return view;
+  }
+  function pkRenderReview() {
+    var box = el('pkImpReview'), go = el('pkImpGo');
+    if (!pkView) { box.innerHTML = ''; go.disabled = true; return; }
+    var v = pkEvaluate(pkView), isOwner = me.role === 'owner';
+    var fresh = v.orders.filter(function (o) { return !o.dup; }), dups = v.orders.filter(function (o) { return o.dup; });
+    var blocked = fresh.filter(function (o) { return o.bad; }), good = fresh.filter(function (o) { return !o.bad; });
+    var skip = el('pkImpSkip') && el('pkImpSkip').checked;
+    var units = good.reduce(function (t, o) { return t + o.lines.reduce(function (a, l) { return a + l.qty; }, 0); }, 0);
+    var h = '';
+    if (v.errs.length) h += '<div class="unmatched-list" style="display:block; margin:10px 0;">' + v.errs.map(escapeHtml).join('<br>') + '</div>';
+    if (!v.orders.length) { box.innerHTML = h; go.disabled = true; go.textContent = 'Add to run'; return; }
+    h += '<div class="helptext" style="margin:12px 0 6px;"><b>' + fresh.length + '</b> new order' + (fresh.length === 1 ? '' : 's') + (dups.length ? ', <b>' + dups.length + '</b> already imported (skipped)' : '') + (v.dupInFiles ? ', ' + v.dupInFiles + ' repeated in the files (skipped)' : '') + '.</div>';
+    if (v.unmapped.length) {
+      h += '<div class="unmatched-list" style="display:block; margin:8px 0;"><b>' + v.unmapped.length + ' code' + (v.unmapped.length === 1 ? '' : 's') + ' not mapped to one of our SKUs.</b> ' + (isOwner ? 'Choose the SKU for each, then save.' : 'Ask the owner to add them under Platform codes, then choose the files again.') + '</div>';
+      h += '<div class="table-scroll" style="border:1px solid var(--border-soft); border-radius:12px; max-height:220px; overflow-y:auto;"><table><tbody>' + v.unmapped.slice(0, 80).map(function (u, i) {
+        return '<tr><td style="white-space:nowrap; font-weight:600;">' + escapeHtml(u.code) + '</td><td style="font-size:12px;">' + escapeHtml(u.name || '') + (u.why === 'retired' ? ' <span class="badge retired">maps to retired ' + escapeHtml(u.retiredSku) + '</span>' : '') + '</td><td>' + (isOwner ? '<select class="pk-map-sel" data-code="' + escapeHtml(u.code) + '" data-always-search style="max-width:300px;"><option value="">Choose our SKU…</option>' + activeProducts().map(function (p) { return '<option value="' + escapeHtml(p.sku) + '">' + escapeHtml((p.name || '') + ' (' + p.sku + ')') + '</option>'; }).join('') + '</select>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' + (v.unmapped.length > 80 ? '<div class="helptext">Showing the first 80 codes.</div>' : '') + (isOwner ? '<div style="margin:8px 0;"><button class="btn btn-sm" id="pkSaveMaps" type="button">Save these mappings</button></div>' : '');
+      h += '<label class="chk-inline" style="margin:8px 0;"><input type="checkbox" id="pkImpSkip"' + (skip ? ' checked' : '') + '> Leave out the ' + blocked.length + ' order' + (blocked.length === 1 ? '' : 's') + ' with unmapped codes and add the rest (import those later once mapped)</label>';
+    }
+    h += '<div class="table-scroll" style="border:1px solid var(--border-soft); border-radius:12px; max-height:260px; overflow-y:auto; margin-top:8px;"><table><thead><tr><th>Order</th><th>Items</th><th></th></tr></thead><tbody>' + v.orders.slice(0, 120).map(function (o) {
+      var st = o.dup ? '<span class="badge retired">Already imported</span>' : o.bad ? '<span class="badge out">Unmapped code</span>' : '<span class="badge ok">Ready</span>';
+      return '<tr><td style="white-space:nowrap;">' + escapeHtml(o.display) + '</td><td style="font-size:12px;">' + o.rl.map(function (x) { return x.product ? escapeHtml(x.product.sku) + ' × ' + x.line.qty : '<span style="color:#B3261E;">' + escapeHtml(x.line.code) + ' × ' + x.line.qty + '</span>'; }).join('<br>') + '</td><td>' + st + '</td></tr>';
+    }).join('') + '</tbody></table></div>' + (v.orders.length > 120 ? '<div class="helptext">Showing the first 120 orders.</div>' : '');
+    box.innerHTML = h;
+    var can = good.length > 0 && (blocked.length === 0 || skip);
+    go.disabled = !can || pkBusy;
+    go.textContent = can ? 'Add ' + good.length + ' order' + (good.length === 1 ? '' : 's') + ' (' + units + ' unit' + (units === 1 ? '' : 's') + ') to run' : 'Add to run';
+    var sk = el('pkImpSkip'); if (sk) sk.addEventListener('change', pkRenderReview);
+    var sm = el('pkSaveMaps'); if (sm) sm.addEventListener('click', function () {
+      var chosen = Array.prototype.filter.call(box.querySelectorAll('.pk-map-sel'), function (s) { return s.value; }).map(function (s) { return { p: v.plat.key, c: s.getAttribute('data-code'), s: s.value }; });
+      if (!chosen.length) { showToast('Choose a SKU for at least one code'); return; }
+      pkSaveMappings(chosen).then(function () { showToast(chosen.length + ' mapping' + (chosen.length === 1 ? '' : 's') + ' saved'); pkRenderReview(); }).catch(function () { showToast('Could not save the mappings'); });
+    });
+  }
+  function pkSaveMappings(newRows) {
+    var rows = skuMapRows.slice();
+    newRows.forEach(function (n) {
+      var i = -1; rows.forEach(function (r, ix) { if (r.p === n.p && pkNormCode(r.c) === pkNormCode(n.c)) i = ix; });
+      if (i >= 0) rows[i] = n; else rows.push(n);
+    });
+    skuMapRows = rows;
+    return dbNS.doc('config/skumap').set({ rows: rows });
+  }
+  function pkReadSelected() {
+    var errBox = el('pkImpError'); errBox.classList.remove('show');
+    if (!pkFiles.length) { pkView = null; pkRenderReview(); return; }
+    el('pkImpReview').innerHTML = '<div class="helptext" style="margin:12px 0;">Reading ' + pkFiles.length + ' file' + (pkFiles.length === 1 ? '' : 's') + '…</div>';
+    el('pkImpGo').disabled = true;
+    var platId = el('pkImpPlatform').value, plat = pkPlat(platId), results = [], chain = Promise.resolve();
+    pkFiles.forEach(function (f) { chain = chain.then(function () { return pkReadOne(f, plat); }).then(function (r) { results.push({ file: f.name, orders: r.orders, error: r.error }); }); });
+    chain.then(function () { pkView = pkBuildView(platId, results); pkRenderReview(); });
+  }
+  function pkOpenImport() {
+    if (!canWriteStock()) return;
+    pkFiles = []; pkView = null; pkBusy = false;
+    el('pkImpFiles').value = ''; el('pkImpError').classList.remove('show'); el('pkImpReview').innerHTML = ''; el('pkImpGo').disabled = true; el('pkImpGo').textContent = 'Add to run';
+    var open = runsList.filter(function (r) { return r.status !== 'closed'; });
+    el('pkImpRun').innerHTML = '<option value="new">A new run</option>' + open.map(function (r) { return '<option value="' + escapeHtml(r.id) + '"' + (r.id === pkRunId ? ' selected' : '') + '>' + escapeHtml(r.name || 'Run') + '</option>'; }).join('');
+    el('pkImpRunName').value = pkDefaultRunName(); el('pkImpRunNameWrap').style.display = el('pkImpRun').value === 'new' ? '' : 'none';
+    el('pkImportOverlay').classList.add('show');
+  }
+  function pkDefaultRunName() { var d = new Date(); return 'Run ' + d.getDate() + ' ' + d.toLocaleString('en-IN', { month: 'short' }) + ' · ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()); }
+  function pkCreateRun() {
+    if (pkBusy || !pkView) return;
+    var v = pkEvaluate(pkView), skip = el('pkImpSkip') && el('pkImpSkip').checked;
+    var good = v.orders.filter(function (o) { return !o.dup && !o.bad; });
+    if (!good.length || (v.orders.some(function (o) { return !o.dup && o.bad; }) && !skip)) return;
+    pkBusy = true; el('pkImpGo').disabled = true; el('pkImpGo').textContent = 'Adding…';
+    var now = nowIso(), runSel = el('pkImpRun').value, errBox = el('pkImpError');
+    var runP = runSel === 'new'
+      ? dbNS.collection('runs').add({ name: el('pkImpRunName').value.trim() || pkDefaultRunName(), at: now, status: 'open', byId: me.id || null, byName: me.name || '' }).then(function (ref) { return ref.id; })
+      : Promise.resolve(runSel);
+    runP.then(function (runId) {
+      var chain = Promise.resolve();
+      for (var i = 0; i < good.length; i += 15) (function (part) {
+        chain = chain.then(function () {
+          return Promise.all(part.map(function (o) {
+            return dbNS.doc('pickorders/' + o.key).set({
+              platform: v.plat.id, platformKey: v.plat.key, orderNo: o.orderNo, display: o.display, totalsOnly: o.totalsOnly, runId: runId, status: 'new', createdAt: now,
+              byId: me.id || null, byName: me.name || '', fileName: o.fileName || '',
+              lines: o.rl.map(function (x) { return { code: x.line.code, name: x.line.name || '', qty: x.line.qty, sku: x.product.sku }; })
+            });
+          }));
+        });
+      })(good.slice(i, i + 15));
+      return chain.then(function () { return runId; });
+    }).then(function (runId) {
+      pkBusy = false; pkRunId = runId; el('pkImportOverlay').classList.remove('show');
+      showToast(good.length + ' order' + (good.length === 1 ? '' : 's') + ' added to the run');
+      showView('picks');
+    }).catch(function (err) {
+      pkBusy = false; el('pkImpGo').textContent = 'Add to run';
+      errBox.textContent = isWritePermissionError(err) ? 'You do not have permission to add orders. Ask the owner to publish the latest Firestore rules.' : 'Stopped part-way. Some orders may have been added. Choose the files again to see what is left.';
+      errBox.classList.add('show'); pkRenderReview();
+    });
+  }
+
+  // ---- the pick list ----
+  function pkRackIndex() { var m = {}; rackRows.forEach(function (r, i) { m[String(r.s).toLowerCase()] = { i: i, rack: r.r || '' }; }); return m; }
+  function pkCompute(orders) {
+    var need = {}, warn = [], unresolved = 0;
+    function add(p, qty, o, kitSku) {
+      var k = p.id; if (!need[k]) need[k] = { p: p, need: 0, orders: {}, kits: {} };
+      need[k].need += qty; need[k].orders[o.id] = 1; if (kitSku) need[k].kits[kitSku] = 1;
+    }
+    orders.forEach(function (o) {
+      (o.lines || []).forEach(function (l) {
+        var p = findBySku(l.sku);
+        if (!p) { unresolved++; return; }
+        if (isKitProduct(p)) {
+          var info = kitInfo(p);
+          info.components.forEach(function (c) { add(c, l.qty, o, p.sku); });
+          if (info.missing.length) warn.push('Kit ' + p.sku + ': ' + info.missing.join(', ') + ' not in inventory');
+        } else add(p, l.qty, o, '');
+      });
+    });
+    var rack = pkRackIndex();
+    var rows = Object.keys(need).map(function (k) { return need[k]; });
+    rows.forEach(function (r) { var rk = rack[String(r.p.sku).toLowerCase()]; r.rackIdx = rk ? rk.i : 1e9; r.rack = rk ? rk.rack : ''; r.have = Math.max(0, Number(r.p.quantity) || 0); r.short = Math.max(0, r.need - r.have); });
+    rows.sort(function (a, b) { return a.rackIdx - b.rackIdx || String(a.p.sku).localeCompare(String(b.p.sku)); });
+    return { rows: rows, warn: warn, unresolved: unresolved };
+  }
+  function pkOrdersInView() {
+    var openIds = {}; runsList.forEach(function (r) { if (r.status !== 'closed') openIds[r.id] = 1; });
+    return pickOrders.filter(function (o) { return pkRunId === 'all' ? !!openIds[o.runId] : o.runId === pkRunId; });
+  }
+  function renderPicks() {
+    if (!el('viewPicks')) return;
+    var runs = runsList.filter(function (r) { return r.status !== 'closed'; });
+    if (pkRunId !== 'all' && !runsList.some(function (r) { return r.id === pkRunId; })) pkRunId = 'all';
+    var orders = pkOrdersInView(), c = pkCompute(orders);
+    var units = c.rows.reduce(function (t, r) { return t + r.need; }, 0), shorts = c.rows.filter(function (r) { return r.short > 0; }).length;
+    var h = '<div class="card" style="margin-bottom:14px;"><div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center;"><label for="pkRunSel" style="font-weight:600;">Showing</label><select id="pkRunSel" data-plain style="min-width:220px;"><option value="all"' + (pkRunId === 'all' ? ' selected' : '') + '>All open runs</option>' + runs.map(function (r) { return '<option value="' + escapeHtml(r.id) + '"' + (r.id === pkRunId ? ' selected' : '') + '>' + escapeHtml(r.name || 'Run') + '</option>'; }).join('') + '</select>' +
+      '<span class="helptext" style="margin:0;">' + orders.length + ' order' + (orders.length === 1 ? '' : 's') + ' · ' + units + ' unit' + (units === 1 ? '' : 's') + ' · ' + c.rows.length + ' SKU' + (c.rows.length === 1 ? '' : 's') + (shorts ? ' · <b style="color:#B3261E;">' + shorts + ' short on stock</b>' : '') + '</span>' +
+      '<span style="flex:1;"></span><button class="btn btn-sm" id="pkPrint" type="button"' + (orders.length ? '' : ' disabled') + '>Print</button><button class="btn btn-sm" id="pkExcel" type="button"' + (orders.length ? '' : ' disabled') + '>Download Excel</button>' + (me.role === 'owner' && pkRunId !== 'all' ? '<button class="btn btn-sm" id="pkCloseRun" type="button">Close this run</button>' : '') + '</div></div>';
+    if (!orders.length) {
+      h += '<div class="card"><div class="helptext" style="margin:0;">No orders in this view yet. Use <b>Import orders</b> to add the day\'s orders from Shopify, Unicommerce, All Things Baby, Babyamore or a store PO.</div></div>';
+    } else {
+      if (c.unresolved) h += '<div class="unmatched-list" style="display:block; margin-bottom:10px;">' + c.unresolved + ' order line' + (c.unresolved === 1 ? '' : 's') + ' point to a SKU that no longer exists and are left out of this list.</div>';
+      c.warn.forEach(function (w) { h += '<div class="unmatched-list" style="display:block; margin-bottom:10px;">⚠ ' + escapeHtml(w) + '</div>'; });
+      h += '<div class="card"><h2 class="card-title">Pick list</h2><div class="table-scroll"><table><thead><tr><th class="num">#</th><th>Rack</th><th>SKU</th><th>Product</th><th class="num">To pick</th><th class="num">In stock</th><th>Check</th></tr></thead><tbody>' +
+        c.rows.map(function (r, i) {
+          return '<tr><td class="num">' + (i + 1) + '</td><td style="white-space:nowrap;">' + (r.rack ? escapeHtml(r.rack) : '<span style="color:var(--ink-faint);">—</span>') + '</td><td style="white-space:nowrap;">' + escapeHtml(r.p.sku) + '</td><td>' + escapeHtml(r.p.name || '') + (Object.keys(r.kits).length ? '<div class="prod-sku">for kit ' + Object.keys(r.kits).map(escapeHtml).join(', ') + '</div>' : '') + '</td><td class="num"><b>' + r.need + '</b></td><td class="num">' + r.have + '</td><td>' + (r.short ? '<span class="badge out">Short by ' + r.short + '</span><div class="prod-sku">' + Object.keys(r.orders).length + ' order' + (Object.keys(r.orders).length === 1 ? '' : 's') + ' affected</div>' : '<span class="badge ok">OK</span>') + '</td></tr>';
+        }).join('') + '</tbody></table></div></div>';
+      h += '<div class="card" style="margin-top:14px;"><h2 class="card-title">By order</h2>' + orders.slice().sort(function (a, b) { return (a.platform || '').localeCompare(b.platform || '') || String(a.orderNo).localeCompare(String(b.orderNo)); }).map(function (o) {
+        var u = (o.lines || []).reduce(function (t, l) { return t + (Number(l.qty) || 0); }, 0);
+        return '<details style="border-top:1px solid var(--border-soft); padding:8px 0;"><summary style="cursor:pointer;"><b>' + escapeHtml(o.platform || '') + '</b> · ' + escapeHtml(o.display || o.orderNo) + ' <span class="helptext" style="display:inline; margin:0;">' + u + ' unit' + (u === 1 ? '' : 's') + '</span></summary><table><tbody>' + (o.lines || []).map(function (l) { return '<tr><td style="white-space:nowrap;">' + escapeHtml(l.sku || l.code) + '</td><td>' + escapeHtml(l.name || '') + '</td><td class="num">× ' + l.qty + '</td></tr>'; }).join('') + '</tbody></table></details>';
+      }).join('') + '</div>';
+    }
+    el('pkBody').innerHTML = h;
+    var sel = el('pkRunSel'); if (sel) sel.addEventListener('change', function () { pkRunId = sel.value; renderPicks(); });
+    var pr = el('pkPrint'); if (pr) pr.addEventListener('click', function () { pkPrintList(c, orders); });
+    var ex = el('pkExcel'); if (ex) ex.addEventListener('click', function () { pkExportList(c, orders); });
+    var cr = el('pkCloseRun'); if (cr) cr.addEventListener('click', function () {
+      if (!window.confirm('Close this run? It leaves the open list; the orders stay saved.')) return;
+      dbNS.doc('runs/' + pkRunId).update({ status: 'closed', closedAt: nowIso() }).then(function () { pkRunId = 'all'; showToast('Run closed'); }).catch(function () { showToast('Could not close the run'); });
+    });
+  }
+  function pkExportList(c, orders) {
+    var day = todayStr();
+    var rows = [['#', 'Rack', 'SKU', 'Product', 'To pick', 'In stock', 'Short by', 'For kit']];
+    c.rows.forEach(function (r, i) { rows.push([i + 1, r.rack, r.p.sku, r.p.name || '', r.need, r.have, r.short, Object.keys(r.kits).join(', ')]); });
+    var byOrder = [['Platform', 'Order', 'SKU', 'Product', 'Qty']];
+    orders.forEach(function (o) { (o.lines || []).forEach(function (l) { byOrder.push([o.platform || '', o.display || o.orderNo, l.sku || l.code, l.name || '', l.qty]); }); });
+    saveXlsx('aariro-pick-list-' + day + '.xlsx', [{ name: 'Pick list', rows: rows, widths: [5, 12, 24, 56, 9, 9, 9, 24] }, { name: 'By order', rows: byOrder, widths: [18, 22, 24, 56, 6] }]);
+  }
+  function pkPrintList(c, orders) {
+    var d = new Date().toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    var html = '<!doctype html><html><head><meta charset="utf-8"><title>Pick list</title><style>body{font:12px Arial,sans-serif;margin:16px;color:#111}h1{font-size:16px;margin:0 0 4px}table{border-collapse:collapse;width:100%;margin-top:8px}th,td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}th{background:#eee}td.n{text-align:right}.s{color:#b00;font-weight:bold}.box{width:16px;height:16px;border:1px solid #333;display:inline-block}</style></head><body><h1>Pick list</h1><div>' + escapeHtml(d) + ' · ' + orders.length + ' orders · ' + c.rows.reduce(function (t, r) { return t + r.need; }, 0) + ' units</div><table><thead><tr><th></th><th>#</th><th>Rack</th><th>SKU</th><th>Product</th><th>To pick</th><th>In stock</th></tr></thead><tbody>' +
+      c.rows.map(function (r, i) { return '<tr><td><span class="box"></span></td><td>' + (i + 1) + '</td><td>' + escapeHtml(r.rack) + '</td><td>' + escapeHtml(r.p.sku) + '</td><td>' + escapeHtml(r.p.name || '') + '</td><td class="n"><b>' + r.need + '</b></td><td class="n' + (r.short ? ' s' : '') + '">' + r.have + (r.short ? ' (short ' + r.short + ')' : '') + '</td></tr>'; }).join('') + '</tbody></table></body></html>';
+    var f = document.createElement('iframe'); f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    document.body.appendChild(f); f.contentDocument.open(); f.contentDocument.write(html); f.contentDocument.close();
+    setTimeout(function () { try { f.contentWindow.focus(); f.contentWindow.print(); } catch (e) { showToast('Could not open the print window'); } setTimeout(function () { document.body.removeChild(f); }, 4000); }, 300);
+  }
+
+  // ---- setup (owner): platform codes and rack order ----
+  function pkOpenSetup() {
+    if (me.role !== 'owner') { showToast('Only the owner can change platform codes and racks'); return; }
+    el('pkMapMsg').textContent = ''; el('pkRackMsg').textContent = ''; el('pkMapFile').value = ''; el('pkRackFile').value = '';
+    el('pkMapPlat').innerHTML = PK_KEYS.map(function (k) { return '<option value="' + escapeHtml(k) + '">' + escapeHtml(k === 'Unicommerce' ? 'Unicommerce (FirstCry, Nykaa)' : k) + '</option>'; }).join('');
+    el('pkMapSku').innerHTML = '<option value="">Our SKU…</option>' + activeProducts().map(function (p) { return '<option value="' + escapeHtml(p.sku) + '">' + escapeHtml((p.name || '') + ' (' + p.sku + ')') + '</option>'; }).join('');
+    el('pkMapCode').value = ''; el('pkMapSearch').value = '';
+    pkRenderSetup(); el('pkSetupOverlay').classList.add('show');
+  }
+  function pkRenderSetup() {
+    var q = el('pkMapSearch').value.trim().toLowerCase();
+    var rows = skuMapRows.filter(function (r) { return !q || (r.c + ' ' + r.s + ' ' + r.p).toLowerCase().indexOf(q) !== -1; });
+    el('pkMapCount').textContent = skuMapRows.length + ' mapping' + (skuMapRows.length === 1 ? '' : 's') + ' saved' + (q ? ' · ' + rows.length + ' match' : '');
+    el('pkMapList').innerHTML = rows.length ? '<div class="table-scroll" style="border:1px solid var(--border-soft); border-radius:12px; max-height:220px; overflow-y:auto;"><table><tbody>' + rows.slice(0, 150).map(function (r) {
+      return '<tr><td style="font-size:12px;">' + escapeHtml(r.p) + '</td><td style="font-weight:600;">' + escapeHtml(r.c) + '</td><td>→ ' + escapeHtml(r.s) + '</td><td style="text-align:right;"><button class="btn btn-sm" data-delmap="' + escapeHtml(r.p + '||' + r.c) + '" type="button">Remove</button></td></tr>';
+    }).join('') + '</tbody></table></div>' + (rows.length > 150 ? '<div class="helptext">Showing the first 150.</div>' : '') : '<div class="helptext">No mappings yet.</div>';
+    Array.prototype.forEach.call(el('pkMapList').querySelectorAll('[data-delmap]'), function (b) {
+      b.addEventListener('click', function () {
+        var parts = b.getAttribute('data-delmap').split('||');
+        var next = skuMapRows.filter(function (r) { return !(r.p === parts[0] && r.c === parts.slice(1).join('||')); });
+        dbNS.doc('config/skumap').set({ rows: next }).then(function () { skuMapRows = next; pkRenderSetup(); showToast('Removed'); }).catch(function () { showToast('Could not save'); });
+      });
+    });
+    el('pkRackCount').textContent = rackRows.length ? rackRows.length + ' SKUs in rack order' : 'No rack order saved yet (the list is sorted by SKU).';
+  }
+  function pkImportMapFile(text) {
+    var msg = el('pkMapMsg'); msg.style.color = '';
+    var rows = csvToRows(text), hs = sheetHeaders(text);
+    function pick(names) { for (var i = 0; i < names.length; i++) if (hs.indexOf(names[i]) !== -1) return names[i]; return ''; }
+    var cC = pick(['code', 'platform code', 'seller sku', 'seller sku code', 'old sku', 'old sku code', 'product code']), cS = pick(['new sku', 'our sku', 'sku']), cP = pick(['platform', 'channel']);
+    if (!cC || !cS) { msg.style.color = '#B3261E'; msg.textContent = 'The sheet needs a "code" column (the platform\'s code or old SKU) and a "sku" column (our new SKU). A "platform" column is optional.'; return; }
+    var errs = [], out = [], seen = {};
+    rows.forEach(function (r, i) {
+      var code = String(r[cC] || '').trim(), sku = String(r[cS] || '').trim();
+      if (!code && !sku) return;
+      var key = pkNormPlatformKey(cP ? r[cP] : ''), p = findBySku(sku);
+      if (!code) { errs.push('Row ' + (i + 2) + ': no code'); return; }
+      if (key === null) { errs.push('Row ' + (i + 2) + ': unknown platform "' + r[cP] + '"'); return; }
+      if (!p) { errs.push('Row ' + (i + 2) + ': "' + sku + '" is not one of our SKUs'); return; }
+      if (isRetired(p)) { errs.push('Row ' + (i + 2) + ': ' + p.sku + ' is retired'); return; }
+      var k = key + '||' + pkNormCode(code);
+      if (seen[k] && seen[k] !== p.sku) { errs.push('Row ' + (i + 2) + ': "' + code + '" is mapped to two different SKUs'); return; }
+      seen[k] = p.sku; out.push({ p: key, c: code, s: p.sku });
+    });
+    if (errs.length) { msg.style.color = '#B3261E'; msg.textContent = 'Nothing was saved. ' + errs.slice(0, 8).join('; ') + (errs.length > 8 ? ' … and ' + (errs.length - 8) + ' more' : ''); return; }
+    if (!out.length) { msg.style.color = '#B3261E'; msg.textContent = 'No rows found in the file.'; return; }
+    var before = skuMapRows.length;
+    pkSaveMappings(out).then(function () { msg.textContent = out.length + ' mapping' + (out.length === 1 ? '' : 's') + ' saved (' + (skuMapRows.length - before) + ' new).'; pkRenderSetup(); }).catch(function () { msg.style.color = '#B3261E'; msg.textContent = 'Could not save. Try again.'; });
+  }
+  function pkImportRackFile(text) {
+    var msg = el('pkRackMsg'); msg.style.color = '';
+    var rows = csvToRows(text), hs = sheetHeaders(text);
+    if (hs.indexOf('sku') === -1) { msg.style.color = '#B3261E'; msg.textContent = 'The sheet needs a "sku" column, and optionally a "rack" column, with the top row picked first.'; return; }
+    var errs = [], out = [], seen = {};
+    rows.forEach(function (r, i) {
+      var sku = String(r.sku || '').trim(); if (!sku) return;
+      var p = findBySku(sku); if (!p) { errs.push('Row ' + (i + 2) + ': "' + sku + '" is not one of our SKUs'); return; }
+      if (seen[p.sku]) { errs.push('Row ' + (i + 2) + ': ' + p.sku + ' appears twice'); return; }
+      seen[p.sku] = 1; out.push({ s: p.sku, r: String(r.rack || r.location || r.bin || '').trim() });
+    });
+    if (errs.length) { msg.style.color = '#B3261E'; msg.textContent = 'Nothing was saved. ' + errs.slice(0, 8).join('; ') + (errs.length > 8 ? ' … and ' + (errs.length - 8) + ' more' : ''); return; }
+    if (!out.length) { msg.style.color = '#B3261E'; msg.textContent = 'No rows found in the file.'; return; }
+    dbNS.doc('config/racks').set({ rows: out }).then(function () { rackRows = out; msg.textContent = out.length + ' SKUs saved in rack order.'; pkRenderSetup(); renderPicks(); }).catch(function () { msg.style.color = '#B3261E'; msg.textContent = 'Could not save. Try again.'; });
+  }
+  (function pkWire() {
+    el('pkImportBtn').addEventListener('click', pkOpenImport);
+    el('pkSetupBtn').addEventListener('click', pkOpenSetup);
+    el('pkImpClose').addEventListener('click', function () { el('pkImportOverlay').classList.remove('show'); });
+    el('pkImpCancel').addEventListener('click', function () { el('pkImportOverlay').classList.remove('show'); });
+    el('pkImpGo').addEventListener('click', pkCreateRun);
+    el('pkImpPlatform').innerHTML = PK_PLATFORMS.map(function (p) { return '<option value="' + escapeHtml(p.id) + '">' + escapeHtml(p.label) + '</option>'; }).join('');
+    el('pkImpPlatform').addEventListener('change', pkReadSelected);
+    el('pkImpRun').addEventListener('change', function () { el('pkImpRunNameWrap').style.display = el('pkImpRun').value === 'new' ? '' : 'none'; });
+    el('pkImpFiles').addEventListener('change', function () { pkFiles = Array.prototype.slice.call(this.files || []); pkReadSelected(); });
+    el('pkSetupClose').addEventListener('click', function () { el('pkSetupOverlay').classList.remove('show'); });
+    el('pkSetupDone').addEventListener('click', function () { el('pkSetupOverlay').classList.remove('show'); });
+    el('pkMapSearch').addEventListener('input', pkRenderSetup);
+    el('pkMapFile').addEventListener('change', function () { var f = this.files && this.files[0]; if (f) readSpreadsheetFile(f, pkImportMapFile, function (m) { el('pkMapMsg').style.color = '#B3261E'; el('pkMapMsg').textContent = m; }); });
+    el('pkRackFile').addEventListener('change', function () { var f = this.files && this.files[0]; if (f) readSpreadsheetFile(f, pkImportRackFile, function (m) { el('pkRackMsg').style.color = '#B3261E'; el('pkRackMsg').textContent = m; }); });
+    el('pkMapAdd').addEventListener('click', function () {
+      var key = el('pkMapPlat').value, code = el('pkMapCode').value.trim(), sku = el('pkMapSku').value, msg = el('pkMapMsg'); msg.style.color = '';
+      if (!code || !sku) { msg.style.color = '#B3261E'; msg.textContent = 'Enter the platform code and choose our SKU.'; return; }
+      pkSaveMappings([{ p: key, c: code, s: sku }]).then(function () { el('pkMapCode').value = ''; msg.textContent = 'Saved.'; pkRenderSetup(); }).catch(function () { msg.style.color = '#B3261E'; msg.textContent = 'Could not save.'; });
+    });
+    el('pkRackClear').addEventListener('click', function () {
+      if (!rackRows.length || !window.confirm('Remove the saved rack order?')) return;
+      dbNS.doc('config/racks').set({ rows: [] }).then(function () { rackRows = []; pkRenderSetup(); renderPicks(); });
+    });
+  })();
+
+  var VIEWS = ['stock', 'orders', 'returns', 'activity', 'skus', 'labels', 'picks'];
   var activeSub = 'list';
   var sigs = {};
   function changed(key, sig) { if (sigs[key] === sig) return false; sigs[key] = sig; return true; }
@@ -2928,7 +3557,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function optHtml(value, text, sel, hay) { return '<option value="' + escapeHtml(value) + '"' + (sel ? ' selected' : '') + (hay ? ' data-search="' + escapeHtml(hay) + '"' : '') + '>' + escapeHtml(text) + '</option>'; }
 
   function showView(name) {
-    if ((name === 'orders' || name === 'labels') && !canWriteStock()) name = 'stock';
+    if ((name === 'orders' || name === 'labels' || name === 'picks') && !canWriteStock()) name = 'stock';
     activeView = name;
     VIEWS.forEach(function (v) { var s = el('view' + v.charAt(0).toUpperCase() + v.slice(1)); if (s) s.hidden = (v !== name); });
     Array.prototype.forEach.call(document.querySelectorAll('#mainTabs .tab'), function (t) { t.classList.toggle('active', t.getAttribute('data-view') === name); });
@@ -2936,6 +3565,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (name === 'skus') showSub(activeSub);
     if (name === 'labels') renderLabels();
     if (name === 'returns') renderReturnsView();
+    if (name === 'picks') renderPicks();
   }
   function showSub(name) {
     if (name === 'create' && !canManage()) name = 'list';
@@ -3660,6 +4290,26 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     saveFile('aariro-low-and-out-of-stock-' + day + '.xlsx', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
   }
 
+  // everything that ever came in (each lot's original quantity), whatever has been dispatched since. Returned items are listed but not counted as received.
+  function exportStockReceived() {
+    var list = products.filter(function (p) { return !isKitProduct(p); }).sort(function (a, b) { return (a.sku || '').localeCompare(b.sku || ''); });
+    var lotRows = [['SKU', 'Product', 'Category', 'Date received', 'Source', 'Quantity received', 'Cost price (₹)', 'Counted in total']];
+    var sumRows = [['SKU', 'Product', 'Category', 'Total received', 'Current stock']];
+    var tr = 0, tc = 0;
+    list.forEach(function (p) {
+      var rec = 0;
+      lotsOf(p).forEach(function (l) {
+        var q = Number(l.orig) || 0; if (!q) return;
+        var counted = !/^(returned|restored)$/i.test(l.source || '');
+        lotRows.push([p.sku, p.name, p.category || '', l.date || '', l.source || '', q, roundMoney(l.cost), counted ? 'Yes' : 'No (returned)']);
+        if (counted) rec += q;
+      });
+      if (rec || (Number(p.quantity) || 0)) { sumRows.push([p.sku, p.name, p.category || '', rec, Math.max(Number(p.quantity) || 0, 0)]); tr += rec; tc += Math.max(Number(p.quantity) || 0, 0); }
+    });
+    if (sumRows.length === 1) { showToast('Nothing has been received yet'); return; }
+    sumRows.push(['', 'Total', '', tr, tc]);
+    saveXlsx('aariro-stock-received-till-' + todayStr() + '.xlsx', [{ name: 'Total received', rows: sumRows, widths: [22, 56, 24, 14, 14] }, { name: 'By date', rows: lotRows, widths: [22, 56, 24, 14, 22, 16, 14, 16], money: [6] }]);
+  }
   function exportStockByLot() {
     var list = activeProducts().filter(function (p) { return !isKitProduct(p); }).sort(function (a, b) { return (a.sku || '').localeCompare(b.sku || ''); });
     var lotRows = [['SKU', 'Product', 'Category', 'Lot received', 'Source', 'Quantity left', 'Cost price (₹)', 'Value (₹)']];
