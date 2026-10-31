@@ -343,6 +343,57 @@
   .add-access-row input[type="email"] { flex: 1; min-width: 200px; padding: 9px 11px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); font-size: 14px; }
   .add-access-row select { padding: 9px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--ink); font-size: 14px; }
   ::selection { background: var(--blush); }
+
+  /* ===== left menu layout ===== */
+  .wrap { max-width: 1440px; display: grid; grid-template-columns: 236px minmax(0, 1fr); column-gap: 30px; align-items: start; }
+  .wrap > * { grid-column: 2; min-width: 0; }
+  .wrap > #mainTabs { grid-column: 1; grid-row: 1 / span 40; position: sticky; top: 20px; align-self: start; max-height: calc(100vh - 40px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; background: var(--surface-alt); border: 1px solid var(--border-soft); border-radius: 18px; padding: 14px 10px 16px; margin: 0; }
+  #mainTabs .nav-group { font-size: 10.5px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); padding: 16px 12px 6px; }
+  #mainTabs .nav-group:first-child { padding-top: 4px; }
+  #mainTabs .tab { display: flex; align-items: center; justify-content: space-between; width: 100%; text-align: left; border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+  #mainTabs .tab:hover { background: var(--surface); }
+  #mainTabs .tab.active { background: var(--blush); border-color: var(--blush-mid); color: var(--ink-strong); }
+  .nav-toggle { display: none; }
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); }
+    .wrap > * , .wrap > #mainTabs { grid-column: 1; grid-row: auto; }
+    .wrap > #mainTabs { position: static; max-height: none; display: none; margin-bottom: 18px; }
+    body.nav-open .wrap > #mainTabs { display: flex; }
+    .nav-toggle { display: inline-flex; }
+  }
+  .todo-list { display: flex; flex-direction: column; gap: 10px; }
+  .todo-row { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 14px 16px; border: 1px solid var(--border-soft); border-radius: 14px; background: var(--surface); color: var(--ink); font-family: inherit; font-size: 14.5px; cursor: pointer; }
+  .todo-row:hover { border-color: var(--blush-strong); }
+  .todo-row .todo-n { flex: none; min-width: 36px; height: 36px; padding: 0 8px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; background: var(--blush); color: var(--ink-strong); }
+  .todo-row.todo .todo-n { background: var(--ink-strong); color: var(--surface); }
+  .todo-row.clear .todo-n { background: var(--surface-alt); color: var(--ink-faint); }
+  .todo-row.muted { cursor: default; opacity: 0.6; }
+  .todo-row b { color: var(--ink-strong); display: block; font-weight: 600; }
+  .todo-row small { display: block; color: var(--ink-soft); font-size: 12.5px; margin-top: 1px; }
+  .todo-row .todo-go { margin-left: auto; color: var(--ink-faint); }
+
+  /* ===== full-height side menu, logo on top, account at the bottom ===== */
+  .wrap { max-width: none; margin: 0; }
+  .wrap > *:not(#mainTabs) { max-width: 1200px; }
+  .wrap > #mainTabs { position: sticky; top: 0; height: 100vh; max-height: none; margin: -28px 0 -60px -20px; padding: 0; gap: 0; border: 0; border-right: 1px solid var(--border-soft); border-radius: 0; overflow: visible; background: var(--surface-alt); }
+  .side-brand { padding: 24px 20px 14px; }
+  .side-logo { height: 50px; width: auto; display: block; }
+  .side-logo { mix-blend-mode: multiply; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .side-logo { mix-blend-mode: normal; border-radius: 8px; } }
+  :root[data-theme="dark"] .side-logo { mix-blend-mode: normal; border-radius: 8px; }
+  .side-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 0 10px 10px; display: flex; flex-direction: column; gap: 2px; }
+  .side-foot { border-top: 1px solid var(--border-soft); padding: 12px 10px; position: relative; }
+  .side-foot .menu-wrap { display: block; }
+  .side-foot .btn-user { width: 100%; justify-content: flex-start; background: var(--surface); }
+  .side-foot .btn-user .who { flex: 1; text-align: left; max-width: none; }
+  .side-foot .menu { top: auto; bottom: calc(100% + 6px); left: 0; right: auto; width: 100%; min-width: 0; }
+  .side-foot .menu-note { max-width: none; }
+  @media (min-width: 901px) { header.top { display: none; } }
+  @media (max-width: 900px) {
+    .wrap > #mainTabs { position: static; height: auto; margin: 0 0 18px; border: 1px solid var(--border-soft); border-radius: 18px; }
+    .side-brand { display: none; }
+    .side-scroll { overflow: visible; padding-top: 12px; }
+  }
 </style>
 </head>
 <body>
@@ -371,6 +422,27 @@
       <span class="brand-tag">SKUs &middot; Labels &middot; Stock</span>
     </div>
     <div class="top-actions">
+      <button class="btn nav-toggle" id="navToggle" type="button">&#9776; Menu</button>
+    </div>
+  </header>
+
+  <nav class="tabs" id="mainTabs" aria-label="Sections">
+    <div class="side-brand"><img id="sideLogo" class="side-logo" alt="Aariro"></div>
+    <div class="side-scroll">
+    <div class="nav-group">Home</div>
+    <button type="button" class="tab active" data-view="home">Dashboard</button>
+    <div class="nav-group">Stock</div>
+    <button type="button" class="tab" data-view="stock">Stock</button>
+    <button type="button" class="tab" data-view="activity">Activity</button>
+    <button type="button" class="tab" data-view="returns">Returns <span class="tab-badge" id="retBadge" hidden></span></button>
+    <div class="nav-group need-edit">Orders</div>
+    <button type="button" class="tab need-edit" data-view="orders">Record orders</button>
+    <button type="button" class="tab need-edit" data-view="picks">Pick lists</button>
+    <div class="nav-group">Setup</div>
+    <button type="button" class="tab" data-view="skus">Products &amp; SKUs</button>
+    <button type="button" class="tab need-edit" data-view="labels">Labels</button>
+    </div>
+    <div class="side-foot">
       <div class="menu-wrap">
         <button class="btn btn-user" id="btnUserMenu" type="button" aria-label="Account">
           <span class="avatar" id="userAvatar">?</span>
@@ -384,16 +456,6 @@
         </div>
       </div>
     </div>
-  </header>
-
-  <nav class="tabs" id="mainTabs" aria-label="Sections">
-    <button type="button" class="tab active" data-view="stock">Stock</button>
-    <button type="button" class="tab need-edit" data-view="orders">Orders</button>
-    <button type="button" class="tab need-edit" data-view="picks">Pick lists</button>
-    <button type="button" class="tab" data-view="returns">Returns <span class="tab-badge" id="retBadge" hidden></span></button>
-    <button type="button" class="tab" data-view="activity">Activity</button>
-    <button type="button" class="tab" data-view="skus">Products &amp; SKUs</button>
-    <button type="button" class="tab need-edit" data-view="labels">Labels</button>
   </nav>
 
   <div class="banner" id="permBanner">
@@ -401,8 +463,15 @@
     <button id="permBannerClose">Dismiss</button>
   </div>
 
+  <!-- ===== Dashboard ===== -->
+  <section class="view" id="viewHome">
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-lead" id="homeLead">What needs to be done.</p>
+    <div class="todo-list" id="homeList"></div>
+  </section>
+
   <!-- ===== Stock ===== -->
-  <section class="view" id="viewStock">
+  <section class="view" id="viewStock" hidden>
     <div class="stats">
       <div class="stat"><div class="num" id="statTotal">0</div><div class="label">Products tracked</div></div>
       <div class="stat"><div class="num" id="statValue">₹ 0.00</div><div class="label">Stock value</div></div>
@@ -436,6 +505,7 @@
             <button class="menu-item need-edit" id="menuDownloadSheet" type="button">Download SKU sheet<span class="menu-sub">Every active SKU, quantity blank</span></button>
             <button class="menu-item need-edit" id="menuUploadSheet" type="button">Upload a filled sheet<span class="menu-sub">Adds the quantities to stock</span></button>
             <button class="menu-item" id="menuExportInventory" type="button">Export current stock<span class="menu-sub">Download the stock list as CSV</span></button>
+            <button class="menu-item need-owner" id="menuRemoveOld" type="button">Remove old dispatches<span class="menu-sub">Owner only · stock goes back, by date and seller</span></button>
             <button class="menu-item need-owner" id="menuReverseUploads" type="button">Reverse a stock upload<span class="menu-sub">Owner only · take back a wrong upload</span></button>
             <button class="menu-item need-owner" id="menuResetStock" type="button">Reset all stock to zero<span class="menu-sub">Owner only · keeps SKUs and kits</span></button>
             <button class="menu-item" id="menuExportLow" type="button">Export low &amp; out of stock (Excel)<span class="menu-sub">What to reorder, with shortfall</span></button>
@@ -678,6 +748,30 @@
       <div class="modal-foot">
         <button class="btn" id="editCancel">Cancel</button>
         <button class="btn btn-primary" id="editSave">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="rmOverlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2>Remove old dispatches</h2><button class="close-x" id="rmClose" type="button">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-error" id="rmError"></div>
+      <div class="helptext" style="margin:0 0 10px;">Removes every dispatch dated <b>before</b> the day you choose, for the seller you choose. Each one is reversed exactly like Undo: the units go back into stock (with their cost lots), and the log entry and order record are deleted. Orders that already have a return recorded are left alone and listed.</div>
+      <div class="grid2">
+        <div class="field"><label for="rmDate">Dispatched before</label><input type="date" id="rmDate"></div>
+        <div class="field"><label for="rmChannel">Seller</label><select id="rmChannel" data-plain></select></div>
+      </div>
+      <div id="rmPreview"></div>
+      <div id="rmConfirmWrap" hidden>
+        <div class="field"><label for="rmWord">Type <b>REMOVE</b> to confirm</label><input type="text" id="rmWord" autocomplete="off"></div>
+      </div>
+      <div class="helptext" id="rmLast" style="margin:10px 0 0;"></div>
+      <div class="modal-foot">
+        <button class="btn" id="rmCancel" type="button">Close</button>
+        <button class="btn" id="rmPreviewBtn" type="button">Preview</button>
+        <button class="btn btn-primary" id="rmGo" type="button" disabled>Remove and restore stock</button>
       </div>
     </div>
   </div>
@@ -999,7 +1093,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   var me = { id: null, name: '', avatarUrl: '', role: 'viewer', isOwner: false, canEdit: false };
   var userNS = null, assetsNS = null;
   var ticked = {};           // product ids ticked in the Stock table (for printing labels)
-  var activeView = 'stock';
+  var activeView = 'home';
   var ordersList = [], returnsList = [], expectedList = [];      // dispatch orders, recorded returns, expected returns
   var retState = { orderDocId: '', earlier: false, lines: [], noticeId: null };
   var preserveReturnState = false;
@@ -1301,6 +1395,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
 
   function render() {
+    if (activeView === 'home' && typeof renderHome === 'function') renderHome();
     var q = els.search.value.trim().toLowerCase();
     var catF = els.categoryFilter.value;
     var statusF = els.statusFilter.value;
@@ -1488,20 +1583,20 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       dbNS.doc('config/skumap').onSnapshot(function (snap) {
         var d = snap.exists ? (snap.data() || {}) : {};
         skuMapRows = Array.isArray(d.rows) ? d.rows : [];
-        if (activeView === 'picks') renderPicks();
+        if (activeView === 'picks') renderPicks(); refreshHome();
       }, function () {});
       dbNS.doc('config/racks').onSnapshot(function (snap) {
         var d = snap.exists ? (snap.data() || {}) : {};
         rackRows = Array.isArray(d.rows) ? d.rows : [];
-        if (activeView === 'picks') renderPicks();
+        if (activeView === 'picks') renderPicks(); refreshHome();
       }, function () {});
       dbNS.collection('runs').onSnapshot(function (snap) {
         runsList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
-        if (activeView === 'picks') renderPicks();
+        if (activeView === 'picks') renderPicks(); refreshHome();
       }, function () {});
       dbNS.collection('pickorders').onSnapshot(function (snap) {
         pickOrders = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
-        if (activeView === 'picks') renderPicks();
+        if (activeView === 'picks') renderPicks(); refreshHome();
       }, function () {});
       dbNS.collection('expected').onSnapshot(function (snap) {
         expectedList = snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); });
@@ -2553,6 +2648,114 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       });
     });
   })();
+
+  // ---------- owner: remove old dispatches in bulk (stock goes back) ----------
+  (function () {
+    var ov = el('rmOverlay'), prevEl = el('rmPreview'), bPrev = el('rmPreviewBtn'), bGo = el('rmGo'), errEl = el('rmError'), word = el('rmWord'), wrap = el('rmConfirmWrap');
+    var allDisp = [], busy = false;
+    function close() { if (!busy) ov.classList.remove('show'); }
+    el('rmClose').addEventListener('click', close); el('rmCancel').addEventListener('click', close);
+    function fetchAll() {
+      var col = dbNS.collection('dispatches');
+      if (col && typeof col.get === 'function') return col.get().then(function (snap) { return snap.docs.map(function (d) { return Object.assign({}, d.data() || {}, { id: d.id }); }); });
+      return Promise.resolve(dispatches.slice());
+    }
+    function resetPreview() { prevEl.innerHTML = ''; wrap.hidden = true; word.value = ''; bGo.disabled = true; }
+    el('menuRemoveOld').addEventListener('click', function () {
+      if (me.role !== 'owner') { showToast('Only the owner can remove old dispatches'); return; }
+      errEl.classList.remove('show'); resetPreview(); el('rmDate').value = '2026-09-30';
+      el('rmChannel').innerHTML = '<option value="">Loading…</option>'; el('rmLast').textContent = '';
+      ov.classList.add('show');
+      fetchAll().then(function (all) {
+        allDisp = all;
+        var chs = {}; all.forEach(function (d) { if (d.type === 'dispatch' && d.channel) chs[d.channel] = 1; });
+        var names = Object.keys(chs).sort();
+        el('rmChannel').innerHTML = '<option value="">All sellers</option>' + names.map(function (c) { return '<option value="' + escapeHtml(c) + '"' + (c === 'Shopify' ? ' selected' : '') + '>' + escapeHtml(c) + '</option>'; }).join('');
+      }).catch(function () { errEl.textContent = 'Could not load the dispatch history. Close and try again.'; errEl.classList.add('show'); });
+      dbNS.doc('config/removalLog').get().then(function (sn) {
+        var e = sn && sn.exists && sn.data() ? (sn.data().entries || []) : [], l = e[e.length - 1];
+        el('rmLast').textContent = l ? 'Last removal: ' + new Date(l.at).toLocaleString('en-IN') + ' by ' + (l.by || '') + ' · ' + l.orders + ' dispatches before ' + l.cutoff + (l.seller ? ' (' + l.seller + ')' : ' (all sellers)') + ', ' + l.units + ' units back in stock.' : '';
+      }).catch(function () {});
+    });
+    el('rmDate').addEventListener('change', resetPreview); el('rmChannel').addEventListener('change', resetPreview);
+    word.addEventListener('input', function () { bGo.disabled = busy || !prevEl.getAttribute('data-ok') || word.value.trim() !== 'REMOVE'; });
+
+    function plan() {
+      var cut = el('rmDate').value, ch = el('rmChannel').value;
+      var parents = allDisp.filter(function (d) { return d.type === 'dispatch' && !d.kitParentId && d.date && d.date < cut && (!ch || d.channel === ch); });
+      var groups = {}, order = [];
+      parents.forEach(function (d) { var k = d.orderRef ? 'o:' + d.orderRef : 'd:' + d.id; if (!groups[k]) { groups[k] = { parents: [], records: [] }; order.push(k); } groups[k].parents.push(d); });
+      var kids = {}; allDisp.forEach(function (d) { if (d.kitParentId) (kids[d.kitParentId] = kids[d.kitParentId] || []).push(d); });
+      var returnsBy = {}; allDisp.forEach(function (d) { if (d.type === 'return') returnsBy[d.productId + '\u0001' + d.channel] = 1; });
+      var session = {}, now = nowIso(), done = [], skipped = [], before = {}, units = 0, dates = [];
+      order.forEach(function (k) {
+        var g = groups[k]; g.parents.forEach(function (p) { g.records.push(p); (kids[p.id] || []).forEach(function (c) { g.records.push(c); }); });
+        var first = g.parents[0], label = (first.orderId || first.orderRef || first.productName || 'dispatch') + ' · ' + (first.channel || '') + ' · ' + first.date, why = '';
+        var ord = first.orderRef ? ordersList.filter(function (o) { return o.orderRef === first.orderRef; })[0] : null;
+        if (ord) {
+          var back = (ord.lines || []).reduce(function (t, l) { return t + lineDone(l); }, 0);
+          if (back > 0) why = 'a return is recorded on it'; else if (noticesOpenFor(ord.id).length) why = 'an expected return is waiting on it';
+        } else if (g.parents.some(function (p) { return returnsBy[p.productId + '\u0001' + p.channel]; })) why = 'older entry, and a return exists for the same item and seller';
+        if (!why) {
+          var trial = Object.assign({}, session), plans = [];   // a private copy, so a failing group changes nothing
+          for (var i = 0; i < g.records.length; i++) {
+            var pl = planUndo(g.records[i], now, trial);
+            if (pl.error) { why = pl.error; break; }
+            plans.push({ d: g.records[i], pl: pl });
+          }
+          if (!why) {
+            plans.forEach(function (x) { if (x.pl.p && before[x.pl.p.id] == null) before[x.pl.p.id] = Number(x.pl.p.quantity) || 0; });
+            Object.keys(trial).forEach(function (id) { session[id] = trial[id]; });
+            g.plans = plans; done.push(g);
+            plans.forEach(function (x) { if (x.pl.p) units += Number(x.d.quantity) || 0; });
+            g.parents.forEach(function (p) { dates.push(p.date); });
+          }
+        }
+        if (why) skipped.push({ label: label, why: why });
+      });
+      return { done: done, skipped: skipped, before: before, session: session, units: units, dates: dates.sort(), cut: cut, seller: ch, total: order.length };
+    }
+    bPrev.addEventListener('click', function () {
+      errEl.classList.remove('show'); resetPreview();
+      if (!el('rmDate').value) { errEl.textContent = 'Choose the date.'; errEl.classList.add('show'); return; }
+      var r = plan();
+      if (!r.total) { prevEl.innerHTML = '<div class="helptext" style="margin:12px 0;">No dispatches match: nothing is dated before ' + escapeHtml(r.cut) + (r.seller ? ' for ' + escapeHtml(r.seller) : '') + '.</div>'; return; }
+      var rows = Object.keys(r.before).map(function (id) { var p = products.filter(function (q) { return q.id === id; })[0]; return p ? { p: p, b: r.before[id], a: r.session[id] ? r.session[id].quantity : r.before[id] } : null; }).filter(function (x) { return x && x.a !== x.b; }).sort(function (a, b) { return (a.p.sku || '').localeCompare(b.p.sku || ''); });
+      prevEl.innerHTML = '<div class="helptext" style="margin:12px 0 6px;"><b>' + r.done.length + '</b> order' + (r.done.length === 1 ? '' : 's') + '/dispatch' + (r.done.length === 1 ? '' : 'es') + ' will be removed' + (r.dates.length ? ' (dated ' + escapeHtml(r.dates[0]) + ' to ' + escapeHtml(r.dates[r.dates.length - 1]) + ')' : '') + ', putting <b>' + r.units + '</b> unit' + (r.units === 1 ? '' : 's') + ' back into stock' + (r.skipped.length ? '. <b style="color:#B3261E;">' + r.skipped.length + '</b> left alone' : '') + '.</div>' +
+        (rows.length ? '<div class="table-scroll" style="border:1px solid var(--border-soft); border-radius:12px; max-height:240px; overflow-y:auto;"><table><thead><tr><th>Product</th><th class="num">Now</th><th class="num">After</th></tr></thead><tbody>' + rows.map(function (x) { return '<tr><td>' + escapeHtml(x.p.name) + '<div class="prod-sku">' + escapeHtml(x.p.sku || '') + '</div></td><td class="num">' + x.b + '</td><td class="num"><b>' + x.a + '</b></td></tr>'; }).join('') + '</tbody></table></div>' : '') +
+        (r.skipped.length ? '<div class="unmatched-list" style="display:block; margin-top:8px;">Left alone: ' + r.skipped.slice(0, 8).map(function (x) { return escapeHtml(x.label + ' — ' + x.why); }).join('<br>') + (r.skipped.length > 8 ? '<br>… and ' + (r.skipped.length - 8) + ' more' : '') + '</div>' : '');
+      if (r.done.length) { prevEl.setAttribute('data-ok', '1'); wrap.hidden = false; } else prevEl.removeAttribute('data-ok');
+    });
+    bGo.addEventListener('click', function () {
+      if (me.role !== 'owner' || busy) return;
+      var r = plan(); if (!r.done.length) return;
+      busy = true; bGo.disabled = true; bPrev.disabled = true; errEl.classList.remove('show');
+      var n = 0, chain = Promise.resolve();
+      r.done.forEach(function (g) {
+        chain = chain.then(function () {
+          var c2 = Promise.resolve();
+          g.plans.forEach(function (x) {
+            c2 = c2.then(function () { return x.pl.fields ? dbNS.collection('products').doc(x.pl.p.id).update(x.pl.fields) : null; }).then(function () { return dbNS.collection('dispatches').doc(x.d.id).delete(); });
+          });
+          return c2.then(function () { return afterUndo(g.parents[0], g.records); }).then(function () { n++; bGo.textContent = 'Removing ' + n + ' of ' + r.done.length + '…'; });
+        });
+      });
+      chain.then(function () {
+        return dbNS.doc('config/removalLog').get().then(function (sn) { return sn && sn.exists && sn.data() ? (sn.data().entries || []) : []; }, function () { return []; }).then(function (e) {
+          e.push({ at: nowIso(), by: me.name || '', cutoff: r.cut, seller: r.seller, orders: r.done.length, units: r.units });
+          return dbNS.doc('config/removalLog').set({ entries: e.slice(-50) });
+        }).catch(function () {});
+      }).then(function () {
+        busy = false; bGo.textContent = 'Remove and restore stock'; bPrev.disabled = false;
+        showToast(r.done.length + ' dispatch' + (r.done.length === 1 ? '' : 'es') + ' removed, stock updated');
+        resetPreview(); return fetchAll().then(function (all) { allDisp = all; });
+      }).catch(function () {
+        busy = false; bGo.textContent = 'Remove and restore stock'; bPrev.disabled = false;
+        errEl.textContent = 'Stopped part-way (' + n + ' of ' + r.done.length + ' done). Press Preview to see what is left, then run it again.'; errEl.classList.add('show');
+        fetchAll().then(function (all) { allDisp = all; });
+      });
+    });
+  })();
   (function () {
     var ov = document.getElementById('resetOverlay'), word = document.getElementById('resetWord'), go = document.getElementById('resetConfirm'), err = document.getElementById('resetError');
     function close() { ov.classList.remove('show'); }
@@ -3547,7 +3750,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     });
   })();
 
-  var VIEWS = ['stock', 'orders', 'returns', 'activity', 'skus', 'labels', 'picks'];
+  var VIEWS = ['home', 'stock', 'orders', 'returns', 'activity', 'skus', 'labels', 'picks'];
   var activeSub = 'list';
   var sigs = {};
   function changed(key, sig) { if (sigs[key] === sig) return false; sigs[key] = sig; return true; }
@@ -3556,9 +3759,42 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function el(id) { return document.getElementById(id); }
   function optHtml(value, text, sel, hay) { return '<option value="' + escapeHtml(value) + '"' + (sel ? ' selected' : '') + (hay ? ' data-search="' + escapeHtml(hay) + '"' : '') + '>' + escapeHtml(text) + '</option>'; }
 
+
+  // ---------- dashboard: what needs doing ----------
+  function refreshHome() { if (activeView === 'home') renderHome(); }
+  function renderHome() {
+    var box = el('homeList'); if (!box) return;
+    var act = activeProducts(), out = 0, low = 0;
+    act.forEach(function (p) { var st = statusOf(p); if (st === 'out') out++; else if (st === 'low') low++; });
+    var openRuns = {}; runsList.forEach(function (r) { if (r.status !== 'closed') openRuns[r.id] = 1; });
+    var waiting = pickOrders.filter(function (o) { return openRuns[o.runId] && (o.status || 'new') === 'new'; });
+    var missing = 0; waiting.forEach(function (o) { (o.lines || []).forEach(function (l) { if (!findBySku(l.sku)) missing++; }); });
+    var openExp = expectedList.filter(noticeOpen), late = openExp.filter(function (n) { return daysBetween(n.emailDate || todayStr(), todayStr()) >= WAIT_LIMIT_DAYS; }).length;
+    var rows = [
+      { n: out, t: 'Out of stock', s: 'Items with nothing left on the shelf', v: 'stock' },
+      { n: low, t: 'Low on stock', s: 'Items at or below their minimum', v: 'stock' },
+      { n: waiting.length, t: 'Orders waiting to be picked', s: 'Imported into an open run, not yet packed', v: 'picks', edit: true },
+      { n: openExp.length, t: 'Expected returns still to arrive', s: late ? late + ' waiting longer than ' + WAIT_LIMIT_DAYS + ' days' : 'None overdue', v: 'returns', late: late > 0 },
+      { n: missing, t: 'Order lines with a missing SKU', s: 'A platform code now points to a SKU that no longer exists', v: 'picks', edit: true },
+      { n: 0, t: 'Held orders waiting for the owner', s: 'Comes with the packing stage', muted: true },
+      { n: 0, t: 'Today\'s Shiprocket upload', s: 'Comes with the Shiprocket stage', muted: true }
+    ];
+    var todo = rows.filter(function (r) { return !r.muted && r.n > 0; }).length;
+    el('homeLead').textContent = todo ? todo + ' thing' + (todo === 1 ? '' : 's') + ' need' + (todo === 1 ? 's' : '') + ' attention.' : 'Nothing needs doing right now.';
+    var order = rows.filter(function (r) { return !r.muted && r.n > 0; }).concat(rows.filter(function (r) { return !r.muted && r.n === 0; }), rows.filter(function (r) { return r.muted; }));
+    box.innerHTML = order.map(function (r, i) {
+      var cls = r.muted ? 'muted' : r.n > 0 ? 'todo' : 'clear';
+      return '<button type="button" class="todo-row ' + cls + (r.edit ? ' need-edit' : '') + '"' + (r.muted ? ' disabled' : ' data-go="' + r.v + '"') + '><span class="todo-n">' + (r.muted ? '–' : r.n > 0 ? r.n : '✓') + '</span><span><b>' + escapeHtml(r.t) + '</b><small>' + escapeHtml(r.n === 0 && !r.muted ? 'All clear' : r.s) + '</small></span>' + (r.muted ? '' : '<span class="todo-go">›</span>') + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('[data-go]'), function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-go')); }); });
+  }
+  (function () { var l = document.querySelector('.brand-logo'), sl = el('sideLogo'); if (l && sl) sl.src = l.src; })();
+  (function () { var t = el('navToggle'); if (t) t.addEventListener('click', function () { document.body.classList.toggle('nav-open'); }); })();
+
   function showView(name) {
     if ((name === 'orders' || name === 'labels' || name === 'picks') && !canWriteStock()) name = 'stock';
     activeView = name;
+    document.body.classList.remove('nav-open');
     VIEWS.forEach(function (v) { var s = el('view' + v.charAt(0).toUpperCase() + v.slice(1)); if (s) s.hidden = (v !== name); });
     Array.prototype.forEach.call(document.querySelectorAll('#mainTabs .tab'), function (t) { t.classList.toggle('active', t.getAttribute('data-view') === name); });
     if (name === 'orders') { refreshOrderOptions(); focusScan(); }
@@ -3566,6 +3802,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (name === 'labels') renderLabels();
     if (name === 'returns') renderReturnsView();
     if (name === 'picks') renderPicks();
+    if (name === 'home') renderHome();
   }
   function showSub(name) {
     if (name === 'create' && !canManage()) name = 'list';
@@ -4485,6 +4722,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (dispatchType === 'return' && activeView === 'orders' && !typing) renderReturnPanel();
     if (activeView === 'returns') renderReturnsView();
     updateRetBadge();
+    refreshHome();
   }
 
   // ---- the order record written with every dispatch ----
@@ -5110,11 +5348,11 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   orderRows = [newOrderRow('')];
   setDispatchType('dispatch');
   if (window.claude && typeof window.claude.use === 'function') startDb(); else computeRole();
-  showView('stock');
+  showView('home');
 
 
 })();
 </script>
-<div id="buildStamp" style="position:fixed; right:8px; bottom:6px; font-size:10.5px; color:#8a8a8a; letter-spacing:0.02em; pointer-events:none; z-index:5;">build 21 Oct 2026 · 18:05 · uploads check v3</div>
+<div id="buildStamp" style="position:fixed; right:8px; bottom:6px; font-size:10.5px; color:#8a8a8a; letter-spacing:0.02em; pointer-events:none; z-index:5;">build 31 Oct 2026 · menu + remove old dispatches</div>
 </body>
 </html>
