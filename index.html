@@ -777,6 +777,32 @@
   </div>
 </div>
 
+<div class="overlay" id="oldRetOverlay">
+  <div class="modal wide">
+    <div class="modal-head"><h2 id="orTitle">Old expected return</h2><button class="close-x" id="orClose" type="button">&times;</button></div>
+    <div class="modal-body">
+      <div class="form-error" id="orError"></div>
+      <div class="helptext" id="orLead" style="margin:0 0 10px;"></div>
+      <div class="grid2">
+        <div class="field"><label for="orChannel">Seller *</label><input type="text" id="orChannel" list="orChannelList" autocomplete="off"><datalist id="orChannelList"></datalist></div>
+        <div class="field"><label for="orOrderId">Order ID *</label><input type="text" id="orOrderId" autocomplete="off"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="orDispatch">Date the order was sent *</label><input type="date" id="orDispatch"></div>
+        <div class="field"><label for="orEmail">Date of the seller's email *</label><input type="date" id="orEmail"></div>
+      </div>
+      <div class="field"><label for="orRef">Seller's reference / tracking number</label><input type="text" id="orRef" placeholder="Optional"></div>
+      <div class="field"><label>Items coming back *</label><div id="orItems"></div><button class="btn btn-sm" id="orAddItem" type="button" style="margin-top:6px;">+ Add an item</button><div class="helptext" style="margin:6px 0 0;">Single items only. For a Kit / Gift box, enter the items inside it.</div></div>
+      <div class="field" id="orRejectWrap" hidden><label for="orRejectWhy">Reason for rejecting *</label><input type="text" id="orRejectWhy" autocomplete="off"></div>
+      <div class="modal-foot">
+        <button class="btn" id="orCancel" type="button">Close</button>
+        <button class="btn" id="orReject" type="button" hidden>Reject</button>
+        <button class="btn btn-primary" id="orSave" type="button">Send for approval</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Undo dispatch confirm -->
 <div class="overlay" id="undoOverlay">
   <div class="modal">
@@ -3770,7 +3796,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var waiting = pickOrders.filter(function (o) { return openRuns[o.runId] && (o.status || 'new') === 'new'; });
     var missing = 0; waiting.forEach(function (o) { (o.lines || []).forEach(function (l) { if (!findBySku(l.sku)) missing++; }); });
     var openExp = expectedList.filter(noticeOpen), late = openExp.filter(function (n) { return daysBetween(n.emailDate || todayStr(), todayStr()) >= WAIT_LIMIT_DAYS; }).length;
+    var pendingOld = pendingNotices().length;
     var rows = [
+      { n: me.role === 'owner' ? pendingOld : 0, t: 'Old returns waiting for your approval', s: 'Entered by managers; nothing counts until you approve', v: 'returns', owner: true },
       { n: out, t: 'Out of stock', s: 'Items with nothing left on the shelf', v: 'stock' },
       { n: low, t: 'Low on stock', s: 'Items at or below their minimum', v: 'stock' },
       { n: waiting.length, t: 'Orders waiting to be picked', s: 'Imported into an open run, not yet packed', v: 'picks', edit: true },
@@ -3784,7 +3812,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     var order = rows.filter(function (r) { return !r.muted && r.n > 0; }).concat(rows.filter(function (r) { return !r.muted && r.n === 0; }), rows.filter(function (r) { return r.muted; }));
     box.innerHTML = order.map(function (r, i) {
       var cls = r.muted ? 'muted' : r.n > 0 ? 'todo' : 'clear';
-      return '<button type="button" class="todo-row ' + cls + (r.edit ? ' need-edit' : '') + '"' + (r.muted ? ' disabled' : ' data-go="' + r.v + '"') + '><span class="todo-n">' + (r.muted ? '–' : r.n > 0 ? r.n : '✓') + '</span><span><b>' + escapeHtml(r.t) + '</b><small>' + escapeHtml(r.n === 0 && !r.muted ? 'All clear' : r.s) + '</small></span>' + (r.muted ? '' : '<span class="todo-go">›</span>') + '</button>';
+      return '<button type="button" class="todo-row ' + cls + (r.edit ? ' need-edit' : '') + (r.owner ? ' need-owner' : '') + '"' + (r.muted ? ' disabled' : ' data-go="' + r.v + '"') + '><span class="todo-n">' + (r.muted ? '–' : r.n > 0 ? r.n : '✓') + '</span><span><b>' + escapeHtml(r.t) + '</b><small>' + escapeHtml(r.n === 0 && !r.muted ? 'All clear' : r.s) + '</small></span>' + (r.muted ? '' : '<span class="todo-go">›</span>') + '</button>';
     }).join('');
     Array.prototype.forEach.call(box.querySelectorAll('[data-go]'), function (b) { b.addEventListener('click', function () { showView(b.getAttribute('data-go')); }); });
   }
@@ -5082,15 +5110,17 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   function buildReturnsView() {
     el('viewReturns').innerHTML =
       '<div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px; margin-bottom:16px;"><h1 class="page-title" style="margin:0;">Returns</h1>' +
-      '<div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary need-edit" id="rtNew">+ Record an expected return</button><button type="button" class="btn" id="rtExpWaiting">Export waiting list (Excel)</button><button type="button" class="btn" id="rtExpReturns">Export returns (Excel)</button></div></div>' +
+      '<div style="display:flex; gap:8px; flex-wrap:wrap;"><button type="button" class="btn btn-primary need-edit" id="rtNew">+ Record an expected return</button><button type="button" class="btn need-manager" id="rtOld">+ Old return (earlier order)</button><button type="button" class="btn" id="rtExpWaiting">Export waiting list (Excel)</button><button type="button" class="btn" id="rtExpReturns">Export returns (Excel)</button></div></div>' +
       '<p class="page-lead">Parcels the sellers have told you are coming back. Stock changes only when you press <b>Receive</b> and confirm what actually arrived.</p>' +
       '<div class="card need-edit" id="rtForm" hidden style="margin-bottom:24px;"><h2 class="card-title">Record an expected return</h2><div class="form-error" id="rtError"></div>' +
         '<div class="grid2"><div class="field"><label for="rtChannel">Seller *</label><select id="rtChannel"></select></div><div class="field"><label for="rtOrder">Order *</label><select id="rtOrder" data-always-search></select></div></div>' +
         '<div id="rtLines"></div>' +
         '<div class="grid2"><div class="field"><label for="rtRef">Seller\'s reference / tracking number</label><input type="text" id="rtRef" placeholder="Optional"></div><div class="field"><label for="rtDate">Date of the seller\'s email</label><input type="date" id="rtDate"></div></div>' +
         '<div class="modal-foot" style="border-top:1px solid var(--border-soft); padding-top:14px;"><button type="button" class="btn" id="rtCancel">Cancel</button><button type="button" class="btn btn-primary" id="rtSave">Save notice</button></div></div>' +
+      '<div class="card need-manager" id="rtApprovals" hidden style="margin-bottom:24px;"></div>' +
       '<div class="card" id="rtWaiting"></div><div class="section-gap"></div><div class="card" id="rtDamaged"></div>';
     el('rtNew').addEventListener('click', function () { openNoticeForm(); });
+    el('rtOld').addEventListener('click', function () { orOpen(null); });
     el('rtCancel').addEventListener('click', function () { el('rtForm').hidden = true; });
     el('rtChannel').addEventListener('change', fillNoticeOrders);
     el('rtOrder').addEventListener('change', fillNoticeLines);
@@ -5099,8 +5129,124 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     el('rtExpReturns').addEventListener('click', exportReturns);
     rtBuilt = true;
   }
+
+  // ---------- old expected returns: managers enter them, the owner approves ----------
+  // A pending entry is saved in the expected-returns list with status "pending", so it counts nowhere until the owner approves it.
+  var orItems = [], orEditing = null;
+  function pendingNotices() { return expectedList.filter(function (n) { return n.status === 'pending'; }); }
+  function rejectedNotices() { return expectedList.filter(function (n) { return n.status === 'rejected'; }); }
+  function orSingles() { return activeProducts().filter(function (p) { return !isKitProduct(p); }).sort(function (a, b) { return (a.name || '').localeCompare(b.name || ''); }); }
+  function orRenderItems() {
+    var opts = '<option value="">Choose an item…</option>' + orSingles().map(function (p) { return '<option value="' + escapeHtml(p.sku) + '">' + escapeHtml((p.name || '') + ' (' + p.sku + ')') + '</option>'; }).join('');
+    el('orItems').innerHTML = orItems.map(function (it, i) {
+      return '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;"><select data-oritem="' + i + '" data-always-search style="flex:1; min-width:0;">' + opts + '</select><input type="number" min="1" step="1" data-orqty="' + i + '" value="' + escapeHtml(String(it.qty)) + '" style="width:80px;" aria-label="Quantity"><button class="btn btn-sm" type="button" data-orrm="' + i + '">Remove</button></div>';
+    }).join('');
+    Array.prototype.forEach.call(el('orItems').querySelectorAll('select[data-oritem]'), function (sel) { var i = Number(sel.getAttribute('data-oritem')); sel.value = orItems[i].sku || ''; sel.addEventListener('change', function () { orItems[i].sku = sel.value; }); });
+    Array.prototype.forEach.call(el('orItems').querySelectorAll('input[data-orqty]'), function (inp) { inp.addEventListener('input', function () { orItems[Number(inp.getAttribute('data-orqty'))].qty = inp.value; }); });
+    Array.prototype.forEach.call(el('orItems').querySelectorAll('[data-orrm]'), function (b) { b.addEventListener('click', function () { orItems.splice(Number(b.getAttribute('data-orrm')), 1); if (!orItems.length) orItems.push({ sku: '', qty: '1' }); orRenderItems(); }); });
+  }
+  function orOpen(id) {
+    var n = id ? expectedList.filter(function (x) { return x.id === id; })[0] : null;
+    orEditing = n || null;
+    var chans = {}; ordersList.forEach(function (o) { if (o.channel) chans[o.channel] = 1; }); expectedList.forEach(function (x) { if (x.channel) chans[x.channel] = 1; });
+    Array.prototype.forEach.call(el('fDispatchChannel').options, function (o) { if (o.value && o.value !== 'Other') chans[o.value] = 1; });
+    el('orChannelList').innerHTML = Object.keys(chans).sort().map(function (c) { return '<option value="' + escapeHtml(c) + '"></option>'; }).join('');
+    el('orChannel').value = n ? n.channel || '' : ''; el('orOrderId').value = n ? n.orderId || '' : '';
+    el('orDispatch').value = n ? n.orderDate || '' : ''; el('orEmail').value = n ? n.emailDate || '' : todayStr();
+    el('orDispatch').max = todayStr(); el('orEmail').max = todayStr(); el('orRef').value = n ? n.reference || '' : '';
+    orItems = n ? (n.lines || []).map(function (l) { return { sku: l.sku, qty: String(l.qty) }; }) : [{ sku: '', qty: '1' }];
+    if (!orItems.length) orItems = [{ sku: '', qty: '1' }];
+    el('orRejectWhy').value = ''; el('orError').classList.remove('show');
+    var review = !!n && me.role === 'owner', owner = me.role === 'owner';
+    el('orTitle').textContent = review ? 'Approve an old return' : 'Old expected return';
+    el('orLead').textContent = review ? 'Entered by ' + (n.createdBy || 'a manager') + ' on ' + fmtDay((n.createdAt || '').slice(0, 10)) + '. Check it, change anything that is wrong, then approve or reject it. Nothing counts until you approve.' : (owner ? 'For an order sent before this tool was used. Saved straight away as an earlier order with an expected return.' : 'For an order sent before this tool was used. The owner has to approve it before it counts; until then it changes nothing.');
+    el('orSave').textContent = review ? 'Approve' : (owner ? 'Save' : 'Send for approval');
+    el('orReject').hidden = !review; el('orRejectWrap').hidden = true;
+    orRenderItems(); el('oldRetOverlay').classList.add('show');
+  }
+  function orRead() {
+    var err = el('orError'); function fail(m) { err.textContent = m; err.classList.add('show'); return null; }
+    err.classList.remove('show');
+    var ch = el('orChannel').value.trim(), oid = el('orOrderId').value.trim(), dd = el('orDispatch').value, ed = el('orEmail').value, today = todayStr();
+    if (!ch) return fail('Enter the seller.'); if (!oid) return fail('Enter the order ID.');
+    if (!dd) return fail('Enter the date the order was sent.'); if (!ed) return fail('Enter the date of the seller\'s email.');
+    if (dd > today || ed > today) return fail('Dates can\'t be in the future.');
+    if (ed < dd) return fail('The email date can\'t be before the date the order was sent.');
+    var lines = [], seen = {};
+    for (var i = 0; i < orItems.length; i++) {
+      var it = orItems[i]; if (!it.sku && (it.qty === '' || it.qty === '1') && orItems.length > 1) continue;
+      var p = findBySku(it.sku), q = toInt(it.qty);
+      if (!p) return fail('Choose the item on row ' + (i + 1) + '.');
+      if (isNaN(q) || q < 1) return fail('Quantity on row ' + (i + 1) + ' must be a whole number, at least 1.');
+      if (seen[p.sku]) return fail(p.sku + ' is on two rows. Put the total on one row.');
+      seen[p.sku] = 1; lines.push({ sku: p.sku, productId: p.id, name: p.name, kit: false, qty: q });
+    }
+    if (!lines.length) return fail('Add at least one item.');
+    var oidKey = orderDocId(ch, oid);
+    if (ordersList.some(function (o) { return o.id === oidKey; })) return fail('That order is already in the tool. Record the expected return the normal way (+ Record an expected return).');
+    if (expectedList.some(function (n) { return n.orderDocId === oidKey && (n.status === 'open' || n.status === 'pending') && (!orEditing || n.id !== orEditing.id); })) return fail('An expected return for this seller and order ID is already recorded or waiting for approval.');
+    return { channel: ch, orderId: oid, orderDocId: oidKey, orderDate: dd, emailDate: ed, reference: el('orRef').value.trim(), lines: lines };
+  }
+  function orCreateOpen(v, createdBy) {
+    var now = nowIso();
+    var orderLines = v.lines.map(function (l) { var p = findBySku(l.sku) || {}; return { sku: l.sku, productId: l.productId, name: l.name, kit: false, qty: l.qty, good: 0, damaged: 0, cost: Number(p.price) || 0 }; });
+    return dbNS.doc('orders/' + v.orderDocId).set({ channel: v.channel, orderId: v.orderId, date: v.orderDate, external: true, orderRef: '', createdAt: now, createdBy: createdBy || me.name || '', lines: orderLines })
+      .then(function () { return dbNS.collection('expected').add({ channel: v.channel, orderId: v.orderId, orderDocId: v.orderDocId, orderDate: v.orderDate, lines: v.lines, reference: v.reference, emailDate: v.emailDate, createdAt: now, createdBy: createdBy || me.name || '', approvedBy: me.role === 'owner' ? (me.name || '') : '', status: 'open', received: {} }); });
+  }
+  function orBusy(on) { el('orSave').disabled = on; el('orReject').disabled = on; }
+  (function () {
+    function close() { el('oldRetOverlay').classList.remove('show'); }
+    el('orClose').addEventListener('click', close); el('orCancel').addEventListener('click', close);
+    el('orAddItem').addEventListener('click', function () { orItems.push({ sku: '', qty: '1' }); orRenderItems(); });
+    el('orSave').addEventListener('click', function () {
+      var v = orRead(); if (!v) return;
+      var owner = me.role === 'owner', err = el('orError');
+      function fail(e) { orBusy(false); err.textContent = isWritePermissionError(e) ? 'You don\'t have permission to save this.' : 'Could not save. Please try again.'; err.classList.add('show'); }
+      orBusy(true);
+      if (owner) {
+        orCreateOpen(v, orEditing ? orEditing.createdBy : '').then(function () { return orEditing ? dbNS.doc('expected/' + orEditing.id).delete() : null; }).then(function () { orBusy(false); close(); showToast(orEditing ? 'Approved. It is now in Waiting to arrive' : 'Saved. It is now in Waiting to arrive'); }).catch(fail);
+      } else {
+        dbNS.collection('expected').add({ channel: v.channel, orderId: v.orderId, orderDocId: v.orderDocId, orderDate: v.orderDate, lines: v.lines, reference: v.reference, emailDate: v.emailDate, createdAt: nowIso(), createdBy: me.name || '', createdById: me.id || '', status: 'pending', received: {} })
+          .then(function () { orBusy(false); close(); showToast('Sent to the owner for approval'); }).catch(fail);
+      }
+    });
+    el('orReject').addEventListener('click', function () {
+      if (!orEditing || me.role !== 'owner') return;
+      var w = el('orRejectWrap'); if (w.hidden) { w.hidden = false; el('orRejectWhy').focus(); return; }
+      var why = el('orRejectWhy').value.trim(), err = el('orError');
+      if (!why) { err.textContent = 'Type the reason for rejecting it.'; err.classList.add('show'); return; }
+      orBusy(true);
+      dbNS.doc('expected/' + orEditing.id).update({ status: 'rejected', closedReason: why + ' (' + (me.name || 'owner') + ')', closedAt: nowIso() })
+        .then(function () { orBusy(false); close(); showToast('Rejected. The manager can see your reason'); })
+        .catch(function () { orBusy(false); err.textContent = 'Could not reject it. Please try again.'; err.classList.add('show'); });
+    });
+  })();
+  function renderApprovals() {
+    var box = el('rtApprovals'); if (!box) return;
+    var pend = pendingNotices().sort(function (a, b) { return (a.createdAt || '').localeCompare(b.createdAt || ''); }), rej = rejectedNotices();
+    if (!pend.length && !rej.length) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    var owner = me.role === 'owner', h = '<h2 class="card-title">Old returns waiting for approval <span style="font-size:13px; font-weight:400; color:var(--ink);">(' + pend.length + ')</span></h2>';
+    if (pend.length) h += '<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Order</th><th>Items</th><th>Entered by</th><th></th></tr></thead><tbody>' + pend.map(function (n) {
+      return '<tr><td>' + escapeHtml(n.channel) + '</td><td><b>' + escapeHtml(n.orderId) + '</b><div class="prod-sku">sent ' + fmtDay(n.orderDate) + ' · mail ' + fmtDay(n.emailDate) + '</div></td><td>' + (n.lines || []).map(function (l) { return l.qty + ' × ' + escapeHtml(l.name); }).join('<br>') + '</td><td>' + escapeHtml(n.createdBy || '') + '</td><td style="text-align:right;">' + (owner ? '<button type="button" class="btn btn-sm btn-primary" data-orreview="' + escapeHtml(n.id) + '">Review</button>' : '<span class="badge retired">Waiting for the owner</span>') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+    else h += '<p style="margin:0; color:var(--ink);">Nothing is waiting.</p>';
+    if (rej.length) h += '<h3 style="margin:18px 0 8px;">Rejected</h3><div class="table-scroll"><table><tbody>' + rej.map(function (n) {
+      return '<tr><td>' + escapeHtml(n.channel) + ' · <b>' + escapeHtml(n.orderId) + '</b></td><td style="font-size:12.5px;">' + escapeHtml(n.closedReason || '') + '</td><td style="text-align:right; white-space:nowrap;"><button type="button" class="btn btn-sm" data-orreuse="' + escapeHtml(n.id) + '">Fix and send again</button>' + (owner ? ' <button type="button" class="btn btn-sm" data-orclear="' + escapeHtml(n.id) + '">Clear</button>' : '') + '</td></tr>';
+    }).join('') + '</tbody></table></div>';
+    box.innerHTML = h;
+    Array.prototype.forEach.call(box.querySelectorAll('[data-orreview]'), function (b) { b.addEventListener('click', function () { orOpen(b.getAttribute('data-orreview')); }); });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-orreuse]'), function (b) { b.addEventListener('click', function () {
+      var n = expectedList.filter(function (x) { return x.id === b.getAttribute('data-orreuse'); })[0]; if (!n) return;
+      orOpen(null); el('orChannel').value = n.channel || ''; el('orOrderId').value = n.orderId || ''; el('orDispatch').value = n.orderDate || ''; el('orEmail').value = n.emailDate || todayStr(); el('orRef').value = n.reference || '';
+      orItems = (n.lines || []).map(function (l) { return { sku: l.sku, qty: String(l.qty) }; }); orRenderItems(); orEditing = null;
+    }); });
+    Array.prototype.forEach.call(box.querySelectorAll('[data-orclear]'), function (b) { b.addEventListener('click', function () { dbNS.doc('expected/' + b.getAttribute('data-orclear')).delete().catch(function () { showToast('Could not clear it'); }); }); });
+  }
+
   function renderReturnsView() {
     if (!rtBuilt) buildReturnsView();
+    renderApprovals();
     var open = expectedList.filter(noticeOpen).sort(function (a, b) { return (a.emailDate || '').localeCompare(b.emailDate || ''); }), today = todayStr();
     el('rtWaiting').innerHTML = '<h2 class="card-title">Waiting to arrive <span style="font-size:13px; font-weight:400; color:var(--ink);">(' + open.length + ')</span></h2>' + (open.length ? '<div class="table-scroll"><table><thead><tr><th>Seller</th><th>Order</th><th>Items</th><th>Reference</th><th>Seller\'s email</th><th class="num">Waiting</th><th></th></tr></thead><tbody>' +
       open.map(function (n) {
@@ -5353,6 +5499,6 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
 })();
 </script>
-<div id="buildStamp" style="position:fixed; right:8px; bottom:6px; font-size:10.5px; color:#8a8a8a; letter-spacing:0.02em; pointer-events:none; z-index:5;">build 31 Oct 2026 · menu + remove old dispatches</div>
+<div id="buildStamp" style="position:fixed; right:8px; bottom:6px; font-size:10.5px; color:#8a8a8a; letter-spacing:0.02em; pointer-events:none; z-index:5;">build 31 Oct 2026 · old return approvals</div>
 </body>
 </html>
