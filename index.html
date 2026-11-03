@@ -618,6 +618,7 @@
                 <div class="field"><label for="retEarlyDate">Dispatch date *</label><input type="date" id="retEarlyDate"></div>
               </div>
               <div class="helptext">An order sent before this tool was used. It is saved as an “earlier order”, and what you scan or add below counts as what was sent. Owners only.</div>
+              <div id="retDupBox" hidden style="margin-top:10px;"></div>
               <div class="field" style="margin-top:12px;"><label for="retAddItem">Add an item</label><select id="retAddItem" data-always-search aria-label="Add an item"></select></div>
             </div>
             <div id="retRows"></div>
@@ -787,6 +788,7 @@
         <div class="field"><label for="orChannel">Seller *</label><input type="text" id="orChannel" list="orChannelList" autocomplete="off"><datalist id="orChannelList"></datalist></div>
         <div class="field"><label for="orOrderId">Order ID *</label><input type="text" id="orOrderId" autocomplete="off"></div>
       </div>
+      <div id="orDupBox" hidden style="margin-bottom:12px;"></div>
       <div class="grid2">
         <div class="field"><label for="orDispatch">Date the order was sent *</label><input type="date" id="orDispatch"></div>
         <div class="field"><label for="orEmail">Date of the seller's email *</label><input type="date" id="orEmail"></div>
@@ -4888,7 +4890,46 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     if (ln.sent != null && g + d > ln.can) return 'Only ' + ln.can + ' can still be returned from this order.';
     return '';
   }
+
+  // ---- earlier orders: the same order ID can come back again with other items ----
+  function earlyAnalysis(ch, oid, skus) {
+    var out = { exists: false, order: null, inTool: false, prior: [], sameSkus: [] };
+    if (!ch || !oid) return out;
+    var key = orderDocId(ch, oid), ord = findOrderRec(ch, oid);
+    out.order = ord; out.inTool = !!ord && !ord.external;
+    out.prior = returnsList.filter(function (r) { return r.orderDocId === key; }).sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
+    out.exists = !!ord || out.prior.length > 0;
+    (skus || []).forEach(function (sku) {
+      var hit = null;
+      out.prior.forEach(function (r) { (r.lines || []).forEach(function (l) { if (l.sku === sku && ((Number(l.good) || 0) + (Number(l.damaged) || 0) > 0 || (l.kit && (Number(l.good) || 0) > 0))) hit = { sku: sku, date: r.date, qty: (Number(l.good) || 0) + (Number(l.damaged) || 0), name: l.name }; }); });
+      if (!hit && ord) { var ol = (ord.lines || []).filter(function (l) { return l.sku === sku; })[0]; if (ol && lineDone(ol) > 0) hit = { sku: sku, date: '', qty: lineDone(ol), name: ol.name }; }
+      if (hit) out.sameSkus.push(hit);
+    });
+    return out;
+  }
+  function earlyEnteredSkus() {
+    return retState.lines.filter(function (ln) { var n = lineNums(ln), t = ln.kit ? n.kits : n.good + n.damaged; return t > 0 || ln.good !== '' || ln.damaged !== '' || ln.qty !== ''; }).map(function (ln) { return ln.sku; });
+  }
+  function updateEarlyWarn() {
+    var box = el('retDupBox'); if (!box) return;
+    if (!retState.earlier) { box.hidden = true; box.innerHTML = ''; return; }
+    var ch = currentChannel(), oid = el('retEarlyId').value.trim(), a = earlyAnalysis(ch, oid, earlyEnteredSkus());
+    if (!a.exists) { box.hidden = true; box.innerHTML = ''; return; }
+    var prevOk = el('retDupOk') ? el('retDupOk').checked : false, prevSku = el('retSkuOk') ? el('retSkuOk').checked : false;
+    var h = '';
+    if (a.inTool) {
+      h = '<div class="form-error show" style="display:block;">Order ' + escapeHtml(oid) + ' is already in the tool for ' + escapeHtml(ch) + '. Choose it from the Order list above instead of entering it as an earlier order.</div>';
+    } else {
+      var lines = a.prior.length ? a.prior.map(function (r) { return fmtDay(r.date) + ': ' + (r.lines || []).map(function (l) { return ((Number(l.good) || 0) + (Number(l.damaged) || 0) || l.qty || 0) + ' × ' + escapeHtml(l.name); }).join(', '); }).join('<br>') : 'It is already recorded in the tool.';
+      h = '<div style="padding:12px 14px; border-radius:12px; background:#FFF6D6; color:#5A4500; font-size:13.5px;"><b>You typed an order ID that is already recorded.</b> Please double check it before saving.<div style="margin-top:6px;">' + lines + '</div><label class="chk-inline" style="margin-top:8px;"><input type="checkbox" id="retDupOk"' + (prevOk ? ' checked' : '') + '> I have checked. This is another return for the same order (other items).</label></div>';
+      if (a.sameSkus.length) h += '<div style="margin-top:8px; padding:12px 14px; border-radius:12px; background:#FBE3E0; color:#8A1C13; font-size:13.5px;"><b>Same product already returned on this order:</b><div style="margin-top:6px;">' + a.sameSkus.map(function (x) { return escapeHtml(x.name || x.sku) + ' (' + escapeHtml(x.sku) + '): ' + x.qty + ' returned' + (x.date ? ' on ' + fmtDay(x.date) : ''); }).join('<br>') + '</div><label class="chk-inline" style="margin-top:8px;"><input type="checkbox" id="retSkuOk"' + (prevSku ? ' checked' : '') + '> I confirm this product really came back a second time.</label></div>';
+      if (a.order && a.order.date && !el('retEarlyDate').value) el('retEarlyDate').value = a.order.date;
+    }
+    box.innerHTML = h; box.hidden = false;
+  }
+  el('retEarlyId').addEventListener('input', updateEarlyWarn);
   function markReturnErrors() {
+    updateEarlyWarn();
     Array.prototype.forEach.call(el('retRows').querySelectorAll('.ret-row'), function (rowEl) {
       var ln = retState.lines[Number(rowEl.getAttribute('data-i'))]; if (!ln) return;
       var msg = returnLineProblem(ln);
@@ -4958,6 +4999,7 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
   }
   el('retOrder').addEventListener('change', function () { clearScanSay(); selectReturnOrder(this.value); focusScan(); });
   el('retEarlyDate').addEventListener('input', fixReturnDateBounds);
+  document.getElementById('fDispatchChannel').addEventListener('change', function () { setTimeout(updateEarlyWarn, 0); });
   el('retAddItem').addEventListener('change', function () {
     var p = products.filter(function (x) { return x.id === el('retAddItem').value; })[0]; el('retAddItem').value = '';
     if (!p || !retState.earlier) return;
@@ -5001,9 +5043,11 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
       if (me.role !== 'owner') { fail('Only an owner can record an earlier order.'); return; }
       orderId = el('retEarlyId').value.trim(); dispatchDate = el('retEarlyDate').value;
       if (!orderId) { fail('Enter the earlier order ID.'); return; }
+      var exOrder = findOrderRec(channel, orderId);
+      if (exOrder && !exOrder.external) { fail('Order ' + orderId + ' is already in the tool for ' + channel + ' — choose it from the Order list instead.'); return; }
+      if (exOrder && exOrder.date) dispatchDate = exOrder.date;
       if (!dispatchDate) { fail('Enter the dispatch date of that earlier order.'); return; }
       if (dispatchDate > todayStr()) { fail('The dispatch date can\'t be in the future.'); return; }
-      if (findOrderRec(channel, orderId)) { fail('Order ' + orderId + ' is already in the list for ' + channel + ' — choose it from the list instead.'); return; }
     } else {
       if (!order) { fail('Choose the order the items belong to.'); return; }
       orderId = order.orderId; dispatchDate = order.date;
@@ -5020,6 +5064,13 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     });
     if (bad) { markReturnErrors(); fail('Nothing was saved — fix the marked lines first.'); return; }
     if (!items.length) { fail('Enter what came back — at least one item.'); return; }
+    var earlyEx = null;
+    if (earlier) {
+      var ea = earlyAnalysis(channel, orderId, items.map(function (it) { return it.ln.sku; }));
+      earlyEx = ea.order;
+      if (ea.exists && !(el('retDupOk') && el('retDupOk').checked)) { fail('This order ID is already recorded. Check the order ID, then tick the box under the order ID to confirm this is another return.'); return; }
+      if (ea.sameSkus.length && !(el('retSkuOk') && el('retSkuOk').checked)) { fail('A product on this order was already returned. Tick the red confirmation box if it really came back again.'); return; }
+    }
     var prodOf = function (ln) { return products.filter(function (x) { return x.id === ln.productId || x.sku === ln.sku; })[0]; };
     for (var k = 0; k < items.length; k++) { var pp = prodOf(items[k].ln); if (!pp || isRetired(pp)) { fail((pp ? pp.sku : items[k].ln.sku) + ' is retired or missing and can\'t be returned to stock.'); return; } }
 
@@ -5058,6 +5109,16 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
           if (ln.kit) l.comps = ln.comps; else l.cost = Number(ln.cost) || 0;
           return l;
         });
+        if (earlyEx) {
+          // the same earlier order again: add new items as new lines, add to the line of an item that is already there
+          var merged = (earlyEx.lines || []).map(function (l) { return Object.assign({}, l); });
+          lines.forEach(function (nl) {
+            var ml = merged.filter(function (x) { return x.sku === nl.sku; })[0];
+            if (ml) { ml.qty = (Number(ml.qty) || 0) + (Number(nl.qty) || 0); ml.good = (Number(ml.good) || 0) + (Number(nl.good) || 0); ml.damaged = (Number(ml.damaged) || 0) + (Number(nl.damaged) || 0); }
+            else merged.push(nl);
+          });
+          return dbNS.doc('orders/' + earlyEx.id).update({ lines: merged });
+        }
         return dbNS.doc('orders/' + orderDocId(channel, orderId)).set({ channel: channel, orderId: orderId, date: dispatchDate, external: true, orderRef: '', createdAt: now, createdBy: me.name || '', lines: lines });
       }
       var upd = order.lines.map(function (l, i) {
@@ -5141,9 +5202,9 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     el('orItems').innerHTML = orItems.map(function (it, i) {
       return '<div style="display:flex; gap:8px; align-items:center; margin-bottom:6px;"><select data-oritem="' + i + '" data-always-search style="flex:1; min-width:0;">' + opts + '</select><input type="number" min="1" step="1" data-orqty="' + i + '" value="' + escapeHtml(String(it.qty)) + '" style="width:80px;" aria-label="Quantity"><button class="btn btn-sm" type="button" data-orrm="' + i + '">Remove</button></div>';
     }).join('');
-    Array.prototype.forEach.call(el('orItems').querySelectorAll('select[data-oritem]'), function (sel) { var i = Number(sel.getAttribute('data-oritem')); sel.value = orItems[i].sku || ''; sel.addEventListener('change', function () { orItems[i].sku = sel.value; }); });
+    Array.prototype.forEach.call(el('orItems').querySelectorAll('select[data-oritem]'), function (sel) { var i = Number(sel.getAttribute('data-oritem')); sel.value = orItems[i].sku || ''; sel.addEventListener('change', function () { orItems[i].sku = sel.value; orUpdateWarn(); }); });
     Array.prototype.forEach.call(el('orItems').querySelectorAll('input[data-orqty]'), function (inp) { inp.addEventListener('input', function () { orItems[Number(inp.getAttribute('data-orqty'))].qty = inp.value; }); });
-    Array.prototype.forEach.call(el('orItems').querySelectorAll('[data-orrm]'), function (b) { b.addEventListener('click', function () { orItems.splice(Number(b.getAttribute('data-orrm')), 1); if (!orItems.length) orItems.push({ sku: '', qty: '1' }); orRenderItems(); }); });
+    Array.prototype.forEach.call(el('orItems').querySelectorAll('[data-orrm]'), function (b) { b.addEventListener('click', function () { orItems.splice(Number(b.getAttribute('data-orrm')), 1); if (!orItems.length) orItems.push({ sku: '', qty: '1' }); orRenderItems(); orUpdateWarn(); }); });
   }
   function orOpen(id) {
     var n = id ? expectedList.filter(function (x) { return x.id === id; })[0] : null;
@@ -5162,7 +5223,39 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     el('orLead').textContent = review ? 'Entered by ' + (n.createdBy || 'a manager') + ' on ' + fmtDay((n.createdAt || '').slice(0, 10)) + '. Check it, change anything that is wrong, then approve or reject it. Nothing counts until you approve.' : (owner ? 'For an order sent before this tool was used. Saved straight away as an earlier order with an expected return.' : 'For an order sent before this tool was used. The owner has to approve it before it counts; until then it changes nothing.');
     el('orSave').textContent = review ? 'Approve' : (owner ? 'Save' : 'Send for approval');
     el('orReject').hidden = !review; el('orRejectWrap').hidden = true;
-    orRenderItems(); el('oldRetOverlay').classList.add('show');
+    orRenderItems(); el('oldRetOverlay').classList.add('show'); orUpdateWarn();
+  }
+
+  function orAnalysis() {
+    var ch = el('orChannel').value.trim(), oid = el('orOrderId').value.trim();
+    var out = { exists: false, inTool: false, order: null, prior: [], notices: [], same: [] };
+    if (!ch || !oid) return out;
+    var key = orderDocId(ch, oid), ord = findOrderRec(ch, oid);
+    out.order = ord; out.inTool = !!ord && !ord.external;
+    out.prior = returnsList.filter(function (r) { return r.orderDocId === key; }).sort(function (a, b) { return (a.date || '').localeCompare(b.date || ''); });
+    out.notices = expectedList.filter(function (n) { return n.orderDocId === key && (n.status === 'open' || n.status === 'pending') && (!orEditing || n.id !== orEditing.id); });
+    out.exists = !!ord || out.prior.length > 0 || out.notices.length > 0;
+    var skus = orItems.filter(function (it) { return it.sku; }).map(function (it) { return it.sku; });
+    skus.forEach(function (sku) {
+      out.prior.forEach(function (r) { (r.lines || []).forEach(function (l) { var q = (Number(l.good) || 0) + (Number(l.damaged) || 0); if (l.sku === sku && q > 0) out.same.push({ sku: sku, name: l.name, why: q + ' already returned on ' + fmtDay(r.date) }); }); });
+      out.notices.forEach(function (n) { (n.lines || []).forEach(function (l) { if (l.sku === sku) out.same.push({ sku: sku, name: l.name, why: l.qty + ' already ' + (n.status === 'pending' ? 'waiting for approval' : 'expected (mail ' + fmtDay(n.emailDate) + ')') }); }); });
+    });
+    return out;
+  }
+  function orUpdateWarn() {
+    var box = el('orDupBox'); if (!box) return;
+    var a = orAnalysis();
+    if (!a.exists) { box.hidden = true; box.innerHTML = ''; return; }
+    var prevOk = el('orDupOk') ? el('orDupOk').checked : false, prevSku = el('orSkuOk') ? el('orSkuOk').checked : false, h = '';
+    if (a.inTool) {
+      h = '<div class="form-error show" style="display:block;">Order ' + escapeHtml(el('orOrderId').value.trim()) + ' is already in the tool for ' + escapeHtml(el('orChannel').value.trim()) + '. Record its expected return the normal way (+ Record an expected return).</div>';
+    } else {
+      var rows = a.prior.map(function (r) { return 'Returned ' + fmtDay(r.date) + ': ' + (r.lines || []).map(function (l) { return ((Number(l.good) || 0) + (Number(l.damaged) || 0)) + ' × ' + escapeHtml(l.name); }).join(', '); })
+        .concat(a.notices.map(function (n) { return (n.status === 'pending' ? 'Waiting for approval' : 'Expected') + ': ' + (n.lines || []).map(function (l) { return l.qty + ' × ' + escapeHtml(l.name); }).join(', '); }));
+      h = '<div style="padding:12px 14px; border-radius:12px; background:#FFF6D6; color:#5A4500; font-size:13.5px;"><b>You typed an order ID that is already recorded.</b> Please double check it before saving.<div style="margin-top:6px;">' + (rows.length ? rows.join('<br>') : 'It is already recorded in the tool.') + '</div><label class="chk-inline" style="margin-top:8px;"><input type="checkbox" id="orDupOk"' + (prevOk ? ' checked' : '') + '> I have checked. This is another return for the same order (other items).</label></div>';
+      if (a.same.length) h += '<div style="margin-top:8px; padding:12px 14px; border-radius:12px; background:#FBE3E0; color:#8A1C13; font-size:13.5px;"><b>Same product already on this order:</b><div style="margin-top:6px;">' + a.same.map(function (x) { return escapeHtml(x.name || x.sku) + ' (' + escapeHtml(x.sku) + '): ' + escapeHtml(x.why); }).join('<br>') + '</div><label class="chk-inline" style="margin-top:8px;"><input type="checkbox" id="orSkuOk"' + (prevSku ? ' checked' : '') + '> I confirm this product really is coming back again.</label></div>';
+    }
+    box.innerHTML = h; box.hidden = false;
   }
   function orRead() {
     var err = el('orError'); function fail(m) { err.textContent = m; err.classList.add('show'); return null; }
@@ -5183,20 +5276,32 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
     }
     if (!lines.length) return fail('Add at least one item.');
     var oidKey = orderDocId(ch, oid);
-    if (ordersList.some(function (o) { return o.id === oidKey; })) return fail('That order is already in the tool. Record the expected return the normal way (+ Record an expected return).');
-    if (expectedList.some(function (n) { return n.orderDocId === oidKey && (n.status === 'open' || n.status === 'pending') && (!orEditing || n.id !== orEditing.id); })) return fail('An expected return for this seller and order ID is already recorded or waiting for approval.');
+    var an = orAnalysis();
+    if (an.inTool) return fail('That order is already in the tool. Record the expected return the normal way (+ Record an expected return).');
+    if (an.exists && !(el('orDupOk') && el('orDupOk').checked)) return fail('This order ID is already recorded. Check the order ID, then tick the box to confirm this is another return.');
+    if (an.same.length && !(el('orSkuOk') && el('orSkuOk').checked)) return fail('A product on this order is already recorded. Tick the red confirmation box if it really is coming back again.');
     return { channel: ch, orderId: oid, orderDocId: oidKey, orderDate: dd, emailDate: ed, reference: el('orRef').value.trim(), lines: lines };
   }
   function orCreateOpen(v, createdBy) {
     var now = nowIso();
     var orderLines = v.lines.map(function (l) { var p = findBySku(l.sku) || {}; return { sku: l.sku, productId: l.productId, name: l.name, kit: false, qty: l.qty, good: 0, damaged: 0, cost: Number(p.price) || 0 }; });
-    return dbNS.doc('orders/' + v.orderDocId).set({ channel: v.channel, orderId: v.orderId, date: v.orderDate, external: true, orderRef: '', createdAt: now, createdBy: createdBy || me.name || '', lines: orderLines })
+    var existing = ordersList.filter(function (o) { return o.id === v.orderDocId; })[0];
+    var orderWrite;
+    if (existing) {
+      var merged = (existing.lines || []).map(function (l) { return Object.assign({}, l); });
+      orderLines.forEach(function (nl) { var ml = merged.filter(function (x) { return x.sku === nl.sku; })[0]; if (ml) ml.qty = (Number(ml.qty) || 0) + nl.qty; else merged.push(nl); });
+      orderWrite = dbNS.doc('orders/' + v.orderDocId).update({ lines: merged });
+    } else {
+      orderWrite = dbNS.doc('orders/' + v.orderDocId).set({ channel: v.channel, orderId: v.orderId, date: v.orderDate, external: true, orderRef: '', createdAt: now, createdBy: createdBy || me.name || '', lines: orderLines });
+    }
+    return orderWrite
       .then(function () { return dbNS.collection('expected').add({ channel: v.channel, orderId: v.orderId, orderDocId: v.orderDocId, orderDate: v.orderDate, lines: v.lines, reference: v.reference, emailDate: v.emailDate, createdAt: now, createdBy: createdBy || me.name || '', approvedBy: me.role === 'owner' ? (me.name || '') : '', status: 'open', received: {} }); });
   }
   function orBusy(on) { el('orSave').disabled = on; el('orReject').disabled = on; }
   (function () {
     function close() { el('oldRetOverlay').classList.remove('show'); }
     el('orClose').addEventListener('click', close); el('orCancel').addEventListener('click', close);
+    el('orChannel').addEventListener('input', orUpdateWarn); el('orOrderId').addEventListener('input', orUpdateWarn);
     el('orAddItem').addEventListener('click', function () { orItems.push({ sku: '', qty: '1' }); orRenderItems(); });
     el('orSave').addEventListener('click', function () {
       var v = orRead(); if (!v) return;
@@ -5499,6 +5604,6 @@ const STARTER = {"libraries": {"categories": [{"code": "CN", "name": "Cozy Nest 
 
 })();
 </script>
-<div id="buildStamp" style="position:fixed; right:8px; bottom:6px; font-size:10.5px; color:#8a8a8a; letter-spacing:0.02em; pointer-events:none; z-index:5;">build 31 Oct 2026 · old return approvals</div>
+<div id="buildStamp" style="position:fixed; right:8px; bottom:6px; font-size:10.5px; color:#8a8a8a; letter-spacing:0.02em; pointer-events:none; z-index:5;">build 3 Nov 2026 · manager repeat returns</div>
 </body>
 </html>
